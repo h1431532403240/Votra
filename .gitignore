@@ -1,0 +1,60 @@
+# Xcode
+.build/
+DerivedData/
+*.swiftpm/
+Packages/
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.xcscmblueprint
+*.xcsettings
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# CocoaPods (if used)
+Pods/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+.idea/
+*.log
+*.swp
+*.swo
+*~
+
+# Environment and secrets
+.env*
+*.pem
+*.p12
+*.mobileprovision
+
+# Build outputs
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test outputs
+coverage/
+*.xcresult
+
+# Fastlane (if used)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code injection
+iOSInjectionProject/
