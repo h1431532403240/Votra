@@ -1,7 +1,7 @@
 # CI Workflow for Votra
 # Purpose: Build, test, and lint PRs without code signing
 # Environment: macos-26 runner (Apple Silicon), Xcode 26
-# Target: macOS 26.2+ (Tahoe), Apple Silicon only — FoundationModels/Translation APIs require Neural Engine
+# Target: macOS 26.0+ (Tahoe), Apple Silicon only — FoundationModels/Translation APIs require Neural Engine
 # Transparency: All logs publicly visible on GitHub Actions tab
 # Cost: FREE for public repositories
 
@@ -82,30 +82,17 @@ jobs:
 
       # 7. Run unit tests
       # Uses Votra-CI scheme which excludes VotraUITests (requires code signing)
-      # UI tests are run in the release workflow where signing is available
-      # Note: Tests require macOS 26.2+, but GitHub runners may be on older versions
       - name: Test
         run: |
           set -euo pipefail
-          MACOS_VERSION=$(sw_vers -productVersion)
-          echo "Runner macOS version: $MACOS_VERSION"
-
-          # Check if macOS version is >= 26.2
-          if [[ "$(printf '%s\n' "26.2" "$MACOS_VERSION" | sort -V | head -n1)" == "26.2" ]]; then
-            echo "macOS version is sufficient, running tests..."
-            xcodebuild test \
-              -project Votra.xcodeproj \
-              -scheme Votra-CI \
-              -destination 'platform=macOS,arch=arm64' \
-              -configuration Debug \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              -resultBundlePath TestResults.xcresult
-          else
-            echo "⚠️ Skipping tests: macOS $MACOS_VERSION < 26.2 (deployment target)"
-            echo "Tests require macOS 26.2+ for FoundationModels and Translation APIs"
-            echo "Tests verified locally before PR submission"
-          fi
+          xcodebuild test \
+            -project Votra.xcodeproj \
+            -scheme Votra-CI \
+            -destination 'platform=macOS,arch=arm64' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            -resultBundlePath TestResults.xcresult
 
       # 8. Upload test results
       - name: Upload Test Results
