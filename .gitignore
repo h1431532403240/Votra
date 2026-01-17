@@ -41,6 +41,8 @@ build/
 *.ipa
 *.dSYM.zip
 *.dSYM
+*.dmg
+*.xcarchive
 
 # Temporary files
 *.tmp
@@ -49,6 +51,11 @@ build/
 # Test outputs
 coverage/
 *.xcresult
+TestResults.xcresult
+
+# Local secrets for act testing
+.secrets*
+certificate.p12
 
 # Fastlane (if used)
 fastlane/report.xml

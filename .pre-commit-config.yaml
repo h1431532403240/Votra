@@ -1,0 +1,11 @@
+# Pre-commit hooks for Votra
+# Install: brew install gitleaks pre-commit && pre-commit install
+# Bypass: SKIP=gitleaks git commit OR git commit --no-verify
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks
+        name: gitleaks
+        description: Detect hardcoded secrets using gitleaks
