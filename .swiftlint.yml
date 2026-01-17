@@ -5,6 +5,7 @@
 excluded:
   - DerivedData
   - .build
+  - build
   - Pods
   - Packages
   - "*/Generated/*"

@@ -1,0 +1,43 @@
+# Gitleaks configuration for Votra
+# This file configures project-specific allowlists for secret scanning
+# See: https://github.com/gitleaks/gitleaks
+
+title = "Votra Gitleaks Configuration"
+
+# Extend the default rules
+[extend]
+
+# Allowlists for paths that should be ignored
+[allowlist]
+  description = "Votra project allowlist"
+
+  # Ignore build artifacts and generated files
+  paths = [
+    '''\.build/''',
+    '''DerivedData/''',
+    '''build/''',
+    '''\.xcarchive/''',
+
+    # Documentation with example secrets
+    '''specs/.*\.md$''',
+    '''quickstart\.md$''',
+
+    # Test fixtures that may contain fake credentials
+    '''VotraTests/.*\.swift$''',
+    '''VotraUITests/.*\.swift$''',
+
+    # Package manifests
+    '''Package\.resolved$''',
+  ]
+
+  # Ignore specific patterns that are known false positives
+  regexes = [
+    # Example API key patterns in documentation
+    '''XXXXXX''',
+    '''YOUR_.*_HERE''',
+    '''example\.com''',
+
+    # Base64 encoding examples in docs
+    '''base64 -i certificate\.p12''',
+    '''base64 -i AuthKey_''',
+  ]
