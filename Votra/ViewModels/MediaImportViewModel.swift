@@ -106,6 +106,7 @@ nonisolated enum MediaImportError: Error, LocalizedError, Sendable {
     case accessDenied(String)
     case transcriptionFailed(String)
     case translationFailed(String)
+    case languageNotInstalled(source: String, target: String)
     case exportFailed(String)
     case cancelled
 
@@ -121,10 +122,21 @@ nonisolated enum MediaImportError: Error, LocalizedError, Sendable {
             return String(localized: "Transcription failed: \(reason)")
         case .translationFailed(let reason):
             return String(localized: "Translation failed: \(reason)")
+        case let .languageNotInstalled(source, target):
+            return String(localized: "Language pack not installed for \(source) → \(target)")
         case .exportFailed(let reason):
             return String(localized: "Export failed: \(reason)")
         case .cancelled:
             return String(localized: "Processing was cancelled")
+        }
+    }
+
+    var recoverySuggestion: String? {
+        switch self {
+        case .languageNotInstalled:
+            return String(localized: "Please download the language pack from System Settings > General > Language & Region > Translation Languages, or click \"Download\" when prompted.")
+        default:
+            return nil
         }
     }
 }
@@ -193,6 +205,15 @@ final class MediaImportViewModel {
 
     /// Error message to display
     private(set) var errorMessage: String?
+
+    /// Warning message (non-fatal issues like skipped segments)
+    private(set) var warningMessage: String?
+
+    /// Texts that were skipped due to AI safety filters
+    private(set) var skippedSegmentTexts: [String] = []
+
+    /// Whether language pack needs to be downloaded
+    private(set) var languageDownloadRequired = false
 
     /// Whether processing is complete
     var isCompleted: Bool {
@@ -349,6 +370,25 @@ final class MediaImportViewModel {
         guard batchState == .idle || isCompleted else { return }
 
         errorMessage = nil
+        warningMessage = nil
+        skippedSegmentTexts = []
+        languageDownloadRequired = false
+
+        // Check if language pack is installed (only if translation is needed)
+        if exportOptions.contentOption != .originalOnly {
+            let isInstalled = await translationService.isLanguagePairInstalled(
+                source: sourceLocale,
+                target: targetLocale
+            )
+            if !isInstalled {
+                languageDownloadRequired = true
+                let sourceName = sourceLocale.localizedString(forIdentifier: sourceLocale.identifier) ?? sourceLocale.identifier
+                let targetName = targetLocale.localizedString(forIdentifier: targetLocale.identifier) ?? targetLocale.identifier
+                errorMessage = MediaImportError.languageNotInstalled(source: sourceName, target: targetName).localizedDescription
+                return
+            }
+        }
+
         let totalFiles = files.count
 
         processingTask = Task { [weak self] in
@@ -384,6 +424,26 @@ final class MediaImportViewModel {
 
             await MainActor.run {
                 self.batchState = .completed(successful: successCount, failed: failCount)
+
+                // Generate warning message for skipped segments with details
+                if !self.skippedSegmentTexts.isEmpty {
+                    let count = self.skippedSegmentTexts.count
+                    // Truncate each segment text for display (first 50 chars)
+                    let truncatedTexts = self.skippedSegmentTexts.map { text in
+                        if text.count > 50 {
+                            return String(text.prefix(50)) + "..."
+                        }
+                        return text
+                    }
+                    let segmentList = truncatedTexts
+                        .enumerated()
+                        .map { index, text in "[\(index + 1)] \(text)" }
+                        .joined(separator: "\n")
+
+                    self.warningMessage = String(
+                        localized: "\(count) segment(s) could not be processed by AI due to content restrictions:\n\(segmentList)"
+                    )
+                }
             }
         }
 
@@ -405,6 +465,11 @@ final class MediaImportViewModel {
     /// Set the translation session (provided by SwiftUI translationTask)
     func setTranslationSession(_ session: Any) async {
         await translationService.setSession(session)
+    }
+
+    /// Invalidate the translation session (call when view disappears)
+    func invalidateTranslationSession() async {
+        await translationService.invalidateSession()
     }
 
     // MARK: - Private Methods
@@ -704,69 +769,119 @@ final class MediaImportViewModel {
         }
     }
 
+    /// Combine adjacent transcription data chunks into larger units for better AI segmentation
+    /// Uses pause detection to determine natural boundaries
+    private func combineTranscriptionData(_ data: [TranscriptionData]) -> [TranscriptionData] {
+        guard !data.isEmpty else { return [] }
+
+        // Pause threshold in seconds - if gap between chunks is larger, start a new combined chunk
+        let pauseThreshold: TimeInterval = 0.8
+
+        var combined: [TranscriptionData] = []
+        var currentText = ""
+        var currentWordTimings: [WordTiming] = []
+        var currentStartTime: TimeInterval = 0
+        var currentEndTime: TimeInterval = 0
+
+        for (index, item) in data.enumerated() {
+            let itemText = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !itemText.isEmpty else { continue }
+
+            if currentText.isEmpty {
+                // Start new combined chunk
+                currentText = itemText
+                currentWordTimings = item.wordTimings
+                currentStartTime = item.startTime
+                currentEndTime = item.endTime
+            } else {
+                // Check if there's a significant pause since last chunk
+                let gap = item.startTime - currentEndTime
+
+                if gap > pauseThreshold {
+                    // Significant pause - save current and start new
+                    combined.append(TranscriptionData(
+                        text: currentText,
+                        startTime: currentStartTime,
+                        endTime: currentEndTime,
+                        wordTimings: currentWordTimings
+                    ))
+
+                    currentText = itemText
+                    currentWordTimings = item.wordTimings
+                    currentStartTime = item.startTime
+                    currentEndTime = item.endTime
+                } else {
+                    // No significant pause - combine with current
+                    currentText += " " + itemText
+                    currentWordTimings += item.wordTimings
+                    currentEndTime = item.endTime
+                }
+            }
+
+            // Also save if this is the last item
+            if index == data.count - 1 && !currentText.isEmpty {
+                combined.append(TranscriptionData(
+                    text: currentText,
+                    startTime: currentStartTime,
+                    endTime: currentEndTime,
+                    wordTimings: currentWordTimings
+                ))
+            }
+        }
+
+        return combined
+    }
+
     /// Convert transcription data to Segments, respecting subtitle character limits
-    /// Each TranscriptionData is processed independently to maintain accurate timing
+    /// Uses AI segmentation for natural sentence boundary detection
     private func convertTranscriptionToSegments(
         _ transcriptionData: [TranscriptionData],
         fileDuration: TimeInterval
     ) async throws -> [Segment] {
+        // First, combine small fragments into larger chunks based on pauses
+        let combinedData = combineTranscriptionData(transcriptionData)
+
         // Get subtitle character limit for source language
         let maxChars = SubtitleStandards.maxCharactersPerEvent(for: sourceLocale)
 
         var segments: [Segment] = []
 
-        for data in transcriptionData {
+        for data in combinedData {
             let text = data.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { continue }
 
-            // Check if this segment exceeds subtitle limit
-            if text.count > maxChars {
-                // Too long - use AI to split within this segment only
-                let wordTimings = data.wordTimings.map { timing in
-                    WordTimingInfo(
-                        text: timing.text,
-                        startTime: timing.startTime,
-                        endTime: timing.endTime
-                    )
-                }
+            // Convert word timings
+            let wordTimings = data.wordTimings.map { timing in
+                WordTimingInfo(
+                    text: timing.text,
+                    startTime: timing.startTime,
+                    endTime: timing.endTime
+                )
+            }
 
-                do {
-                    let timedSegments = try await intelligentSegmentationService.segmentTranscript(
-                        text: text,
-                        wordTimings: wordTimings,
-                        sourceLocale: sourceLocale,
-                        maxCharsPerSegment: maxChars
-                    )
+            // Always use AI segmentation for proper sentence boundary detection
+            // AI will split at natural boundaries while respecting character limits
+            let result = await intelligentSegmentationService.segmentTranscript(
+                text: text,
+                wordTimings: wordTimings,
+                sourceLocale: sourceLocale,
+                maxCharsPerSegment: maxChars
+            )
 
-                    // Convert TimedSegments to Segments
-                    for timedSegment in timedSegments {
-                        segments.append(Segment(
-                            startTime: timedSegment.startTime,
-                            endTime: timedSegment.endTime,
-                            originalText: timedSegment.text,
-                            sourceLocale: sourceLocale,
-                            isFinal: true
-                        ))
-                    }
-                } catch {
-                    // AI failed - fallback to using the segment as-is
-                    segments.append(Segment(
-                        startTime: data.startTime,
-                        endTime: data.endTime,
-                        originalText: text,
-                        sourceLocale: sourceLocale,
-                        isFinal: true
-                    ))
-                }
-            } else {
-                // Short enough - use directly without AI
+            // Convert TimedSegments to Segments
+            for timedSegment in result.segments {
                 segments.append(Segment(
-                    startTime: data.startTime,
-                    endTime: data.endTime,
-                    originalText: text,
+                    startTime: timedSegment.startTime,
+                    endTime: timedSegment.endTime,
+                    originalText: timedSegment.text,
                     sourceLocale: sourceLocale,
                     isFinal: true
                 ))
+            }
+
+            // Track skipped texts for user notification
+            if result.hasSkippedSegments {
+                skippedSegmentTexts.append(contentsOf: result.skippedTexts)
             }
         }
 
@@ -785,9 +900,19 @@ final class MediaImportViewModel {
     }
 
     private func translateSegments(_ segments: [Segment]) async throws -> [Segment] {
+        // Check if translation session is still available before starting
+        guard translationService.hasSession else {
+            throw MediaImportError.translationFailed("Translation session is no longer available. Please try again.")
+        }
+
         var translatedSegments: [Segment] = []
 
         for segment in segments {
+            // Check session before each translation (in case view disappeared during processing)
+            guard translationService.hasSession else {
+                throw MediaImportError.translationFailed("Translation session expired during processing.")
+            }
+
             do {
                 let translatedText = try await translationService.translate(
                     segment.originalText,
@@ -806,8 +931,14 @@ final class MediaImportViewModel {
                     isFinal: segment.isFinal
                 )
                 translatedSegments.append(translatedSegment)
+            } catch TranslationError.sessionInvalidated {
+                // Session became invalid - propagate error to stop processing
+                throw MediaImportError.translationFailed("Translation session expired. Please try again.")
+            } catch TranslationError.noSession {
+                // No session available - propagate error
+                throw MediaImportError.translationFailed("Translation session is not available. Please try again.")
             } catch {
-                // On translation failure, keep original text
+                // On other translation failures, keep original text
                 let fallbackSegment = Segment(
                     startTime: segment.startTime,
                     endTime: segment.endTime,

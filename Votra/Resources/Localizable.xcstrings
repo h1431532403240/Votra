@@ -60,6 +60,9 @@
         }
       }
     },
+    "%lld" : {
+
+    },
     "%lld Failed" : {
       "localizations" : {
         "ja" : {
@@ -115,6 +118,22 @@
           }
         }
       }
+    },
+    "%lld segment(s) could not be processed by AI" : {
+
+    },
+    "%lld segment(s) could not be processed by AI due to content restrictions:\n%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld segment(s) could not be processed by AI due to content restrictions:\n%2$@"
+          }
+        }
+      }
+    },
+    "%lld Warning(s)" : {
+
     },
     "%lld." : {
       "localizations" : {
@@ -374,34 +393,6 @@
         }
       }
     },
-    "Action Items" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アクション項目"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "작업 항목"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "待办事项"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "待辦事項"
-          }
-        }
-      }
-    },
     "Accurate" : {
       "localizations" : {
         "ja" : {
@@ -426,6 +417,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "精確模式"
+          }
+        }
+      }
+    },
+    "Action Items" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクション項目"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "작업 항목"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待办事项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待辦事項"
           }
         }
       }
@@ -1841,6 +1860,12 @@
         }
       }
     },
+    "Content could not be processed due to safety restrictions" : {
+
+    },
+    "Content Restrictions Detected" : {
+
+    },
     "Continue" : {
       "localizations" : {
         "ja" : {
@@ -2738,6 +2763,7 @@
       }
     },
     "Failed to map segments to timestamps" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -3752,6 +3778,9 @@
         }
       }
     },
+    "Language module for %@ is not ready" : {
+
+    },
     "Language pack for %@ is not downloaded" : {
       "localizations" : {
         "ja" : {
@@ -3804,6 +3833,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要下載 %@ 的語言包"
+          }
+        }
+      }
+    },
+    "Language pack not installed for %@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Language pack not installed for %1$@ → %2$@"
           }
         }
       }
@@ -4985,6 +5024,9 @@
         }
       }
     },
+    "Open Settings" : {
+
+    },
     "Open System Settings" : {
       "localizations" : {
         "ja" : {
@@ -5329,6 +5371,12 @@
         }
       }
     },
+    "Please download the language pack from System Settings > General > Language & Region > Translation Languages, or click \"Download\" when prompted." : {
+
+    },
+    "Please download the language pack from System Settings > General > Language & Region > Translation Languages." : {
+
+    },
     "Please restart the application" : {
       "localizations" : {
         "ja" : {
@@ -5384,6 +5432,9 @@
           }
         }
       }
+    },
+    "Please try again. Keep the import window open during processing." : {
+
     },
     "Please wait a moment and try again" : {
       "localizations" : {
@@ -6428,6 +6479,35 @@
         }
       }
     },
+    "Segmentation failed: %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "セグメンテーションに失敗しました: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세그먼테이션 실패: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分段失败：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分段失敗：%@"
+          }
+        }
+      }
+    },
     "Select a Recording" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6594,34 +6674,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "傳送當機報告"
-          }
-        }
-      }
-    },
-    "Segmentation failed: %@" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "セグメンテーションに失敗しました: %@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "세그먼테이션 실패: %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "分段失败：%@"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "分段失敗：%@"
           }
         }
       }
@@ -8089,6 +8141,12 @@
         }
       }
     },
+    "The content may contain sensitive topics that cannot be summarized. Try with different content." : {
+
+    },
+    "These segments were kept as-is without AI segmentation." : {
+
+    },
     "This action cannot be undone." : {
       "localizations" : {
         "ja" : {
@@ -8630,6 +8688,9 @@
           }
         }
       }
+    },
+    "Translation session has expired" : {
+
     },
     "Translation session is not available" : {
       "localizations" : {

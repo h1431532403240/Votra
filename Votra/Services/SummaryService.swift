@@ -44,6 +44,7 @@ nonisolated enum SummaryError: Error, LocalizedError, Sendable {
     case generationFailed(String)
     case parsingFailed
     case cancelled
+    case safetyGuardrailsTriggered
 
     var errorDescription: String? {
         switch self {
@@ -57,6 +58,8 @@ nonisolated enum SummaryError: Error, LocalizedError, Sendable {
             return String(localized: "Failed to parse summary response")
         case .cancelled:
             return String(localized: "Summary generation was cancelled")
+        case .safetyGuardrailsTriggered:
+            return String(localized: "Content could not be processed due to safety restrictions")
         }
     }
 
@@ -72,6 +75,8 @@ nonisolated enum SummaryError: Error, LocalizedError, Sendable {
             return String(localized: "Try generating the summary again")
         case .cancelled:
             return String(localized: "Start the summary generation again when ready")
+        case .safetyGuardrailsTriggered:
+            return String(localized: "The content may contain sensitive topics that cannot be summarized. Try with different content.")
         }
     }
 }
@@ -180,6 +185,12 @@ final class SummaryService: SummaryServiceProtocol {
             state = .error(message: error.localizedDescription)
             throw error
         } catch {
+            // Check for safety guardrails error in the outer catch as well
+            let errorMessage = String(describing: error)
+            if errorMessage.contains("Safety guardrails") || errorMessage.contains("guardrails were triggered") {
+                state = .error(message: SummaryError.safetyGuardrailsTriggered.localizedDescription)
+                throw SummaryError.safetyGuardrailsTriggered
+            }
             state = .error(message: error.localizedDescription)
             throw SummaryError.generationFailed(error.localizedDescription)
         }
@@ -237,16 +248,25 @@ final class SummaryService: SummaryServiceProtocol {
         await MainActor.run { state = .generating(progress: 0.5) }
 
         // Generate response
-        let response = try await session.respond(to: prompt)
+        do {
+            let response = try await session.respond(to: prompt)
 
-        await MainActor.run { state = .generating(progress: 0.8) }
+            await MainActor.run { state = .generating(progress: 0.8) }
 
-        // Parse response
-        let result = parseResponse(response.content)
+            // Parse response
+            let result = parseResponse(response.content)
 
-        await MainActor.run { state = .generating(progress: 1.0) }
+            await MainActor.run { state = .generating(progress: 1.0) }
 
-        return result
+            return result
+        } catch {
+            // Check for safety guardrails error
+            let errorMessage = String(describing: error)
+            if errorMessage.contains("Safety guardrails") || errorMessage.contains("guardrails were triggered") {
+                throw SummaryError.safetyGuardrailsTriggered
+            }
+            throw error
+        }
     }
 
     nonisolated private func parseResponse(_ content: String) -> SummaryResult {

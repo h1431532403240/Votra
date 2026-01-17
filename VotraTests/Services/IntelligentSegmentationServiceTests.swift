@@ -1077,23 +1077,50 @@ struct IntelligentSegmentationServiceTests {
         #expect(duration == 1.0) // Minimum
     }
 
-    // MARK: - Error Type Tests
+    // MARK: - SegmentationResult Tests
 
-    @Test("Segmentation error provides localized description for segmentation failed")
-    func segmentationErrorDescription() async {
-        let error = IntelligentSegmentationService.SegmentationError.segmentationFailed("Test reason")
+    @Test("SegmentationResult success factory creates result with no skipped texts")
+    func segmentationResultSuccessFactory() async {
+        let segments = [
+            TimedSegment(text: "Hello", startTime: 0, endTime: 1),
+            TimedSegment(text: "World", startTime: 1, endTime: 2)
+        ]
 
-        #expect(error.errorDescription != nil)
-        #expect(error.errorDescription?.contains("Test reason") == true)
+        let result = SegmentationResult.success(segments)
+
+        #expect(result.segments.count == 2)
+        #expect(result.skippedTexts.isEmpty)
+        #expect(result.hasSkippedSegments == false)
     }
 
-    @Test("Segmentation error provides localized description for mapping failed")
-    func mappingFailedErrorDescription() async {
-        let error = IntelligentSegmentationService.SegmentationError.mappingFailed
+    @Test("SegmentationResult fallback factory creates result with skipped text")
+    func segmentationResultFallbackFactory() async {
+        let result = SegmentationResult.fallback(
+            originalText: "Skipped content",
+            startTime: 0,
+            endTime: 5
+        )
 
-        // The error description should not be nil and should be non-empty
-        #expect(error.errorDescription != nil)
-        #expect(error.errorDescription?.isEmpty == false)
+        #expect(result.segments.count == 1)
+        #expect(result.segments[0].text == "Skipped content")
+        #expect(result.skippedTexts.count == 1)
+        #expect(result.skippedTexts[0] == "Skipped content")
+        #expect(result.hasSkippedSegments == true)
+    }
+
+    @Test("SegmentationResult hasSkippedSegments returns false when skippedTexts is empty")
+    func segmentationResultHasSkippedSegmentsEmpty() async {
+        let result = SegmentationResult(segments: [], skippedTexts: [])
+
+        #expect(result.hasSkippedSegments == false)
+    }
+
+    @Test("SegmentationResult hasSkippedSegments returns true when skippedTexts has items")
+    func segmentationResultHasSkippedSegmentsNotEmpty() async {
+        let result = SegmentationResult(segments: [], skippedTexts: ["text1", "text2"])
+
+        #expect(result.hasSkippedSegments == true)
+        #expect(result.skippedTexts.count == 2)
     }
 
     // MARK: - Complex Integration Tests

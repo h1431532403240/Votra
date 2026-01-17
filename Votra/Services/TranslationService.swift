@@ -29,7 +29,7 @@ nonisolated struct LanguagePair: Sendable, Equatable, Hashable {
 }
 
 /// Status of language download for translation
-nonisolated enum LanguageDownloadStatus: Sendable {
+nonisolated enum LanguageDownloadStatus: Sendable, Equatable {
     case installed
     case notInstalled
     case downloading(progress: Double)
@@ -41,8 +41,10 @@ nonisolated enum LanguageDownloadStatus: Sendable {
 /// Errors that can occur during translation
 nonisolated enum TranslationError: LocalizedError {
     case noSession
+    case sessionInvalidated
     case languagePairNotSupported(source: Locale, target: Locale)
     case languageNotDownloaded(Locale)
+    case languageNotAllocated(Locale)
     case translationFailed(underlying: Error)
     case emptyInput
     case rateLimited
@@ -51,6 +53,8 @@ nonisolated enum TranslationError: LocalizedError {
         switch self {
         case .noSession:
             return String(localized: "Translation session is not available")
+        case .sessionInvalidated:
+            return String(localized: "Translation session has expired")
         case let .languagePairNotSupported(source, target):
             let sourceName = source.localizedString(forLanguageCode: source.language.languageCode?.identifier ?? "") ?? "source"
             let targetName = target.localizedString(forLanguageCode: target.language.languageCode?.identifier ?? "") ?? "target"
@@ -58,6 +62,9 @@ nonisolated enum TranslationError: LocalizedError {
         case .languageNotDownloaded(let locale):
             let name = locale.localizedString(forLanguageCode: locale.language.languageCode?.identifier ?? "") ?? "this language"
             return String(localized: "Language pack for \(name) is not downloaded")
+        case .languageNotAllocated(let locale):
+            let name = locale.localizedString(forLanguageCode: locale.language.languageCode?.identifier ?? "") ?? "this language"
+            return String(localized: "Language module for \(name) is not ready")
         case .translationFailed:
             return String(localized: "Translation failed")
         case .emptyInput:
@@ -71,9 +78,11 @@ nonisolated enum TranslationError: LocalizedError {
         switch self {
         case .noSession:
             return String(localized: "Please restart the application")
+        case .sessionInvalidated:
+            return String(localized: "Please try again. Keep the import window open during processing.")
         case .languagePairNotSupported:
             return String(localized: "Try a different language combination")
-        case .languageNotDownloaded:
+        case .languageNotDownloaded, .languageNotAllocated:
             return String(localized: "Go to Settings > Languages to download the required language pack")
         case .rateLimited:
             return String(localized: "Please wait a moment and try again")
@@ -112,8 +121,14 @@ protocol TranslationServiceProtocol: Sendable {
     /// Prepare languages for translation (trigger download if needed)
     func prepareLanguages(source: Locale, target: Locale) async throws
 
+    /// Check if a language pair is installed and ready for translation
+    func isLanguagePairInstalled(source: Locale, target: Locale) async -> Bool
+
     /// Set the translation session (provided by SwiftUI translationTask)
     func setSession(_ session: Any) async
+
+    /// Invalidate the current session (call when view disappears)
+    func invalidateSession() async
 }
 
 // MARK: - Implementation
@@ -138,6 +153,11 @@ final class TranslationService: TranslationServiceProtocol {
         state = .ready
     }
 
+    func invalidateSession() async {
+        self.translationSession = nil
+        state = .idle
+    }
+
     // MARK: - Translation Methods
 
     func translate(_ text: String, from sourceLocale: Locale, to targetLocale: Locale) async throws -> String {
@@ -149,6 +169,20 @@ final class TranslationService: TranslationServiceProtocol {
             throw TranslationError.noSession
         }
 
+        // Check if language pair is installed before attempting translation
+        let isInstalled = await isLanguagePairInstalled(source: sourceLocale, target: targetLocale)
+        if !isInstalled {
+            // Check which language is not installed
+            let sourceStatus = await languageStatus(for: sourceLocale)
+            let targetStatus = await languageStatus(for: targetLocale)
+
+            if sourceStatus == .notInstalled {
+                throw TranslationError.languageNotDownloaded(sourceLocale)
+            } else if targetStatus == .notInstalled {
+                throw TranslationError.languageNotDownloaded(targetLocale)
+            }
+        }
+
         state = .translating
 
         do {
@@ -156,6 +190,23 @@ final class TranslationService: TranslationServiceProtocol {
             state = .ready
             return response.targetText
         } catch {
+            let errorMessage = String(describing: error)
+
+            // Check for session invalidation/cancellation errors
+            if errorMessage.contains("session has already been cancelled") ||
+               errorMessage.contains("view it was attached to has disappeared") {
+                // Invalidate session so subsequent calls fail gracefully
+                translationSession = nil
+                state = .error(message: TranslationError.sessionInvalidated.localizedDescription)
+                throw TranslationError.sessionInvalidated
+            }
+
+            // Check for "unallocated locales" error
+            if errorMessage.contains("unallocated locales") {
+                state = .error(message: TranslationError.languageNotAllocated(targetLocale).localizedDescription)
+                throw TranslationError.languageNotAllocated(targetLocale)
+            }
+
             state = .error(message: error.localizedDescription)
             throw TranslationError.translationFailed(underlying: error)
         }
@@ -265,6 +316,23 @@ final class TranslationService: TranslationServiceProtocol {
 
         // Try a minimal translation to trigger download if needed
         _ = try? await session.translate(" ")
+    }
+
+    func isLanguagePairInstalled(source: Locale, target: Locale) async -> Bool {
+        let availability = Translation.LanguageAvailability()
+        let sourceLanguage = source.language
+        let targetLanguage = target.language
+
+        let status = await availability.status(from: sourceLanguage, to: targetLanguage)
+
+        switch status {
+        case .installed:
+            return true
+        case .supported, .unsupported:
+            return false
+        @unknown default:
+            return false
+        }
     }
 
 }

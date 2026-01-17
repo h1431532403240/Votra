@@ -9,18 +9,44 @@
 import Foundation
 import FoundationModels
 
+// MARK: - Segmentation Result
+
+/// Result of segmentation including any skipped segments due to safety filters
+struct SegmentationResult: Sendable {
+    let segments: [TimedSegment]
+    let skippedTexts: [String]
+
+    var hasSkippedSegments: Bool {
+        !skippedTexts.isEmpty
+    }
+
+    /// Create a successful result with no skipped segments
+    static func success(_ segments: [TimedSegment]) -> SegmentationResult {
+        SegmentationResult(segments: segments, skippedTexts: [])
+    }
+
+    /// Create a result with skipped text (fallback when AI fails)
+    static func fallback(originalText: String, startTime: TimeInterval, endTime: TimeInterval) -> SegmentationResult {
+        SegmentationResult(
+            segments: [TimedSegment(text: originalText, startTime: startTime, endTime: endTime)],
+            skippedTexts: [originalText]
+        )
+    }
+}
+
 // MARK: - Protocol
 
 /// Protocol for intelligent segmentation service
 @MainActor
 protocol IntelligentSegmentationServiceProtocol: AnyObject {
     /// Segment transcript text into subtitle-appropriate chunks
+    /// Returns a result containing segments and any texts that were skipped due to safety filters
     func segmentTranscript(
         text: String,
         wordTimings: [WordTimingInfo],
         sourceLocale: Locale,
         maxCharsPerSegment: Int?
-    ) async throws -> [TimedSegment]
+    ) async -> SegmentationResult
 }
 
 // MARK: - Intelligent Segmentation Service
@@ -28,22 +54,6 @@ protocol IntelligentSegmentationServiceProtocol: AnyObject {
 /// Service that uses Apple Intelligence to segment transcripts into natural sentences
 @MainActor
 final class IntelligentSegmentationService: IntelligentSegmentationServiceProtocol {
-
-    // MARK: - Errors
-
-    enum SegmentationError: Error, LocalizedError {
-        case segmentationFailed(String)
-        case mappingFailed
-
-        var errorDescription: String? {
-            switch self {
-            case .segmentationFailed(let reason):
-                return String(localized: "Segmentation failed: \(reason)")
-            case .mappingFailed:
-                return String(localized: "Failed to map segments to timestamps")
-            }
-        }
-    }
 
     // MARK: - Public Methods
 
@@ -53,13 +63,13 @@ final class IntelligentSegmentationService: IntelligentSegmentationServiceProtoc
     ///   - wordTimings: Word-level timing information from speech recognition
     ///   - sourceLocale: The language of the transcript
     ///   - maxCharsPerSegment: Maximum characters per subtitle segment (based on language standards)
-    /// - Returns: Array of timed segments respecting subtitle length limits
+    /// - Returns: SegmentationResult containing segments and any skipped texts due to safety filters
     func segmentTranscript(
         text: String,
         wordTimings: [WordTimingInfo],
         sourceLocale: Locale,
         maxCharsPerSegment: Int? = nil
-    ) async throws -> [TimedSegment] {
+    ) async -> SegmentationResult {
         // Use language-specific limit or provided limit
         let charLimit = maxCharsPerSegment ?? SubtitleStandards.maxCharactersPerEvent(for: sourceLocale)
 
@@ -97,13 +107,77 @@ final class IntelligentSegmentationService: IntelligentSegmentationServiceProtoc
                 generating: TranscriptSegmentation.self
             )
         } catch {
-            throw SegmentationError.segmentationFailed(error.localizedDescription)
+            // Check for safety guardrails error - fallback to original text
+            let errorMessage = String(describing: error)
+            if errorMessage.contains("Safety guardrails") || errorMessage.contains("guardrails were triggered") {
+                // Return original text as-is, marking it as skipped for user notification
+                let startTime = wordTimings.first?.startTime ?? 0
+                let endTime = wordTimings.last?.endTime ?? 0
+                return .fallback(originalText: text, startTime: startTime, endTime: endTime)
+            }
+            // Other errors - also fallback but don't mark as skipped (not a safety issue)
+            let startTime = wordTimings.first?.startTime ?? 0
+            let endTime = wordTimings.last?.endTime ?? 0
+            return SegmentationResult(
+                segments: [TimedSegment(text: text, startTime: startTime, endTime: endTime)],
+                skippedTexts: []
+            )
         }
 
         let segments = response.content.segments
 
+        // Check if segments is empty - this can happen when safety guardrails are triggered
+        // but the framework returns empty result instead of throwing
+        if segments.isEmpty {
+            let startTime = wordTimings.first?.startTime ?? 0
+            let endTime = wordTimings.last?.endTime ?? 0
+            return .fallback(originalText: text, startTime: startTime, endTime: endTime)
+        }
+
+        // Check if AI response content is completely different from input
+        // This can happen when guardrails are triggered but AI returns unrelated content
+        let combinedOutput = segments.map(\.text).joined(separator: " ")
+        let outputSimilarity = calculateSimilarity(
+            normalizeForComparison(text),
+            normalizeForComparison(combinedOutput)
+        )
+        if outputSimilarity < 0.2 {
+            // AI returned something completely unrelated - likely guardrails triggered
+            let startTime = wordTimings.first?.startTime ?? 0
+            let endTime = wordTimings.last?.endTime ?? 0
+            return .fallback(originalText: text, startTime: startTime, endTime: endTime)
+        }
+
+        // Validate segments - filter out any that look like AI instructions/hallucinations
+        // Only keep segments whose text actually appears in the original input
+        let normalizedInput = normalizeForComparison(text)
+        let validatedSegments = segments.filter { segment in
+            let normalizedSegment = normalizeForComparison(segment.text)
+            // Check if this segment's content exists in the original text
+            return normalizedInput.contains(normalizedSegment) ||
+                   calculateSimilarity(normalizedSegment, normalizedInput) > 0.3
+        }
+
+        // Track if significant content was filtered (potential AI hallucination/guardrail issue)
+        let filteredCount = segments.count - validatedSegments.count
+        let hadSignificantFiltering = filteredCount > 0 && Double(filteredCount) / Double(segments.count) > 0.3
+
+        // If all segments were filtered out, fallback to original text
+        if validatedSegments.isEmpty {
+            let startTime = wordTimings.first?.startTime ?? 0
+            let endTime = wordTimings.last?.endTime ?? 0
+            return .fallback(originalText: text, startTime: startTime, endTime: endTime)
+        }
+
         // Map segments back to word timings
-        return mapSegmentsToTimings(segments: segments, wordTimings: wordTimings)
+        let timedSegments = mapSegmentsToTimings(segments: validatedSegments, wordTimings: wordTimings)
+
+        // If significant content was filtered, mark as having skipped content
+        if hadSignificantFiltering {
+            return SegmentationResult(segments: timedSegments, skippedTexts: [text])
+        }
+
+        return .success(timedSegments)
     }
 
     // MARK: - Internal Methods (exposed for testing)

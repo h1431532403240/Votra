@@ -18,6 +18,7 @@ struct MediaImportView: View {
     @State private var isShowingFilePicker = false
     @State private var isDroppingFiles = false
     @State private var translationConfiguration: TranslationSession.Configuration?
+    @State private var isShowingSkippedSegments = false
 
     let availableLanguages: [Locale]
 
@@ -63,11 +64,30 @@ struct MediaImportView: View {
             // Initialize translation configuration
             updateTranslationConfiguration()
         }
+        .onDisappear {
+            // Invalidate session when view disappears to prevent crashes
+            Task {
+                await viewModel.invalidateTranslationSession()
+            }
+        }
         .onChange(of: viewModel.sourceLocale) { _, _ in
+            // Don't change configuration during processing - it invalidates the session
+            guard !viewModel.isProcessing else { return }
             updateTranslationConfiguration()
         }
         .onChange(of: viewModel.targetLocale) { _, _ in
+            // Don't change configuration during processing - it invalidates the session
+            guard !viewModel.isProcessing else { return }
             updateTranslationConfiguration()
+        }
+        .onChange(of: viewModel.skippedSegmentTexts) { _, newValue in
+            // Show sheet when there are skipped segments after processing completes
+            if !newValue.isEmpty && viewModel.isCompleted {
+                isShowingSkippedSegments = true
+            }
+        }
+        .sheet(isPresented: $isShowingSkippedSegments) {
+            SkippedSegmentsSheet(skippedTexts: viewModel.skippedSegmentTexts)
         }
     }
 
@@ -253,34 +273,74 @@ struct MediaImportView: View {
     // MARK: - Footer Section
 
     private var footerSection: some View {
-        HStack {
-            // Clear queue button
-            if !viewModel.files.isEmpty && !viewModel.isProcessing {
-                Button(String(localized: "Clear Queue")) {
-                    viewModel.clearQueue()
+        VStack(spacing: 12) {
+            // Language download required banner
+            if viewModel.languageDownloadRequired {
+                languageDownloadBanner
+            }
+
+            HStack {
+                // Clear queue button
+                if !viewModel.files.isEmpty && !viewModel.isProcessing {
+                    Button(String(localized: "Clear Queue")) {
+                        viewModel.clearQueue()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.red)
+
+                Spacer()
+
+                // Processing status or action buttons
+                if viewModel.isProcessing {
+                    processingStatusView
+                } else if viewModel.isCompleted {
+                    completionStatusView
+                } else {
+                    // Start processing button
+                    Button(String(localized: "Generate Subtitles")) {
+                        Task {
+                            await viewModel.startProcessing()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.files.isEmpty)
+                    .accessibilityIdentifier("media_import_generate_button")
+                }
+            }
+        }
+    }
+
+    // MARK: - Language Download Banner
+
+    private var languageDownloadBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .font(.subheadline)
+                        .bold()
+                }
+                Text(String(localized: "Please download the language pack from System Settings > General > Language & Region > Translation Languages."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            // Processing status or action buttons
-            if viewModel.isProcessing {
-                processingStatusView
-            } else if viewModel.isCompleted {
-                completionStatusView
-            } else {
-                // Start processing button
-                Button(String(localized: "Generate Subtitles")) {
-                    Task {
-                        await viewModel.startProcessing()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.files.isEmpty)
-                .accessibilityIdentifier("media_import_generate_button")
+            Button(String(localized: "Open Settings")) {
+                openTranslationSettings()
             }
+            .buttonStyle(.bordered)
+        }
+        .padding()
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.orange.opacity(0.1))
         }
     }
 
@@ -307,28 +367,48 @@ struct MediaImportView: View {
     // MARK: - Completion Status View
 
     private var completionStatusView: some View {
-        HStack(spacing: 12) {
-            if case .completed(let successful, let failed) = viewModel.batchState {
-                if failed == 0 {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text(String(localized: "Completed: \(successful) file(s)"))
-                } else {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundStyle(.yellow)
-                    Text(String(localized: "Completed: \(successful) succeeded, \(failed) failed"))
+        VStack(alignment: .trailing, spacing: 8) {
+            HStack(spacing: 12) {
+                if case .completed(let successful, let failed) = viewModel.batchState {
+                    if failed == 0 && viewModel.skippedSegmentTexts.isEmpty {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text(String(localized: "Completed: \(successful) file(s)"))
+                    } else if failed == 0 {
+                        Image(systemName: "checkmark.circle.badge.questionmark")
+                            .foregroundStyle(.orange)
+                        Text(String(localized: "Completed: \(successful) file(s)"))
+                    } else {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(.yellow)
+                        Text(String(localized: "Completed: \(successful) succeeded, \(failed) failed"))
+                    }
                 }
-            }
 
-            Button(String(localized: "Open Output Folder")) {
-                viewModel.openOutputDirectory()
-            }
-            .buttonStyle(.bordered)
+                // Show button to view skipped segments if any
+                if !viewModel.skippedSegmentTexts.isEmpty {
+                    Button {
+                        isShowingSkippedSegments = true
+                    } label: {
+                        Label(
+                            String(localized: "\(viewModel.skippedSegmentTexts.count) Warning(s)"),
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                }
 
-            Button(String(localized: "Clear")) {
-                viewModel.clearQueue()
+                Button(String(localized: "Open Output Folder")) {
+                    viewModel.openOutputDirectory()
+                }
+                .buttonStyle(.bordered)
+
+                Button(String(localized: "Clear")) {
+                    viewModel.clearQueue()
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -419,6 +499,13 @@ struct MediaImportView: View {
                     continuation.resume(throwing: error)
                 }
             }
+        }
+    }
+
+    private func openTranslationSettings() {
+        // Open System Settings > General > Language & Region
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Localization-Settings") {
+            NSWorkspace.shared.open(url)
         }
     }
 }

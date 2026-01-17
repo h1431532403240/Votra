@@ -155,6 +155,8 @@ final class MockTranslationServiceForMediaImport: TranslationServiceProtocol, @u
     private(set) var setSessionCallCount = 0
     private(set) var setSessions: [Any] = []
 
+    private(set) var invalidateSessionCallCount = 0
+
     // MARK: - Stub Configuration
 
     var translateResult: String = "Translated text"
@@ -222,11 +224,22 @@ final class MockTranslationServiceForMediaImport: TranslationServiceProtocol, @u
         }
     }
 
+    func isLanguagePairInstalled(source: Locale, target: Locale) async -> Bool {
+        // Return true if languageStatusResult is .installed
+        languageStatusResult == .installed
+    }
+
     func setSession(_ session: Any) async {
         setSessionCallCount += 1
         setSessions.append(session)
         hasSession = true
         state = .ready
+    }
+
+    func invalidateSession() async {
+        invalidateSessionCallCount += 1
+        hasSession = false
+        state = .idle
     }
 
     // MARK: - Test Helpers
@@ -248,6 +261,7 @@ final class MockTranslationServiceForMediaImport: TranslationServiceProtocol, @u
         prepareLanguagesCallCount = 0
         setSessionCallCount = 0
         setSessions = []
+        invalidateSessionCallCount = 0
         translateResult = "Translated text"
         translateError = nil
         translateBatchResult = []
@@ -383,7 +397,7 @@ final class MockIntelligentSegmentationServiceForMediaImport: IntelligentSegment
     // MARK: - Stub Configuration
 
     var segmentTranscriptResult: [TimedSegment] = []
-    var segmentTranscriptError: Error?
+    var segmentTranscriptSkippedTexts: [String] = []
 
     // MARK: - Protocol Methods
 
@@ -392,23 +406,22 @@ final class MockIntelligentSegmentationServiceForMediaImport: IntelligentSegment
         wordTimings: [WordTimingInfo],
         sourceLocale: Locale,
         maxCharsPerSegment: Int?
-    ) async throws -> [TimedSegment] {
+    ) async -> SegmentationResult {
         segmentTranscriptCallCount += 1
         segmentTranscriptTexts.append(text)
         segmentTranscriptWordTimings.append(wordTimings)
         segmentTranscriptSourceLocales.append(sourceLocale)
         segmentTranscriptMaxChars.append(maxCharsPerSegment)
 
-        if let error = segmentTranscriptError {
-            throw error
-        }
-
         // Default: return single segment with the full text if no result configured
+        let segments: [TimedSegment]
         if segmentTranscriptResult.isEmpty {
-            return [TimedSegment(text: text, startTime: 0, endTime: 5.0)]
+            segments = [TimedSegment(text: text, startTime: 0, endTime: 5.0)]
+        } else {
+            segments = segmentTranscriptResult
         }
 
-        return segmentTranscriptResult
+        return SegmentationResult(segments: segments, skippedTexts: segmentTranscriptSkippedTexts)
     }
 
     // MARK: - Test Helpers
@@ -420,7 +433,7 @@ final class MockIntelligentSegmentationServiceForMediaImport: IntelligentSegment
         segmentTranscriptSourceLocales = []
         segmentTranscriptMaxChars = []
         segmentTranscriptResult = []
-        segmentTranscriptError = nil
+        segmentTranscriptSkippedTexts = []
     }
 }
 
@@ -1014,10 +1027,10 @@ struct MockServiceCallVerificationTests {
     }
 
     @Test("Intelligent segmentation mock returns default segment")
-    func intelligentSegmentationMockReturnsDefaultSegment() async throws {
+    func intelligentSegmentationMockReturnsDefaultSegment() async {
         let mock = MockIntelligentSegmentationServiceForMediaImport()
 
-        let result = try await mock.segmentTranscript(
+        let result = await mock.segmentTranscript(
             text: "Test text",
             wordTimings: [],
             sourceLocale: Locale(identifier: "en"),
@@ -1025,27 +1038,45 @@ struct MockServiceCallVerificationTests {
         )
 
         #expect(mock.segmentTranscriptCallCount == 1)
-        #expect(result.count == 1)
-        #expect(result.first?.text == "Test text")
+        #expect(result.segments.count == 1)
+        #expect(result.segments.first?.text == "Test text")
+        #expect(result.skippedTexts.isEmpty)
     }
 
     @Test("Intelligent segmentation mock can be configured with custom result")
-    func intelligentSegmentationMockCanBeConfiguredWithCustomResult() async throws {
+    func intelligentSegmentationMockCanBeConfiguredWithCustomResult() async {
         let mock = MockIntelligentSegmentationServiceForMediaImport()
         mock.segmentTranscriptResult = [
             TimedSegment(text: "Segment 1", startTime: 0, endTime: 2),
             TimedSegment(text: "Segment 2", startTime: 2, endTime: 4)
         ]
 
-        let result = try await mock.segmentTranscript(
+        let result = await mock.segmentTranscript(
             text: "Segment 1 Segment 2",
             wordTimings: [],
             sourceLocale: Locale(identifier: "en"),
             maxCharsPerSegment: nil
         )
 
-        #expect(result.count == 2)
-        #expect(result[0].text == "Segment 1")
-        #expect(result[1].text == "Segment 2")
+        #expect(result.segments.count == 2)
+        #expect(result.segments[0].text == "Segment 1")
+        #expect(result.segments[1].text == "Segment 2")
+    }
+
+    @Test("Intelligent segmentation mock can return skipped texts")
+    func intelligentSegmentationMockCanReturnSkippedTexts() async {
+        let mock = MockIntelligentSegmentationServiceForMediaImport()
+        mock.segmentTranscriptSkippedTexts = ["Skipped content due to safety filter"]
+
+        let result = await mock.segmentTranscript(
+            text: "Test text",
+            wordTimings: [],
+            sourceLocale: Locale(identifier: "en"),
+            maxCharsPerSegment: nil
+        )
+
+        #expect(result.hasSkippedSegments)
+        #expect(result.skippedTexts.count == 1)
+        #expect(result.skippedTexts.first == "Skipped content due to safety filter")
     }
 }

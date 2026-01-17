@@ -317,11 +317,20 @@ final class MockTranslationServiceForTranslation: TranslationServiceProtocol, @u
         prepareLanguagesCallCount += 1
     }
 
+    func isLanguagePairInstalled(source: Locale, target: Locale) async -> Bool {
+        languageStatusToReturn == .installed
+    }
+
     func setSession(_ session: Any) async {
         setSessionCallCount += 1
         setSessionValues.append(session)
         hasSession = true
         state = .ready
+    }
+
+    func invalidateSession() async {
+        hasSession = false
+        state = .idle
     }
 
     // MARK: - Test Helpers
