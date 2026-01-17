@@ -29,9 +29,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      # 1. Checkout
+      # 1. Checkout with full history for gitleaks
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # 2. Select Xcode version
       # Note: macos-26 runners have Xcode 26 pre-installed at /Applications/Xcode.app
