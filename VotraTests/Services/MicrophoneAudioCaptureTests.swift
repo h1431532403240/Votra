@@ -690,7 +690,7 @@ struct SystemAudioCaptureTests {
 @Suite("Ensure Microphones Loaded Tests")
 @MainActor
 struct EnsureMicrophonesLoadedTests {
-    @Test("Ensure microphones loaded only loads once")
+    @Test("Ensure microphones loaded only loads once", .disabled("Requires audio hardware - run locally"))
     func ensureMicrophonesLoadedOnlyLoadsOnce() async {
         let service = AudioCaptureService()
 
@@ -707,7 +707,7 @@ struct EnsureMicrophonesLoadedTests {
         #expect(service.availableMicrophones.count == firstCount)
     }
 
-    @Test("Ensure microphones loaded is idempotent")
+    @Test("Ensure microphones loaded is idempotent", .disabled("Requires audio hardware - run locally"))
     func ensureMicrophonesLoadedIsIdempotent() async {
         let service = AudioCaptureService()
 
@@ -726,7 +726,7 @@ struct EnsureMicrophonesLoadedTests {
 @Suite("Audio Source Selection Tests")
 @MainActor
 struct AudioSourceSelectionTests {
-    @Test("Refresh audio sources updates available sources")
+    @Test("Refresh audio sources updates available sources", .disabled("Requires audio hardware - run locally"))
     func refreshAudioSourcesUpdatesAvailableSources() async {
         let service = AudioCaptureService()
 

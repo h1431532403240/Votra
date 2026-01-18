@@ -341,7 +341,7 @@ struct AudioCaptureServiceSourceManagementTests {
         #expect(service.availableAudioSources.contains { $0.isAllSystemAudio })
     }
 
-    @Test("Refresh audio sources preserves all system audio option")
+    @Test("Refresh audio sources preserves all system audio option", .disabled("Requires audio hardware - run locally"))
     func refreshPreservesAllSystemAudioOption() async {
         let service = AudioCaptureService()
 

@@ -186,7 +186,7 @@ struct AudioCaptureServiceStopCaptureTests {
 @Suite("AudioCaptureService: Ensure Microphones Loaded")
 @MainActor
 struct AudioCaptureServiceEnsureMicrophonesLoadedTests {
-    @Test("ensureMicrophonesLoaded can be called multiple times")
+    @Test("ensureMicrophonesLoaded can be called multiple times", .disabled("Requires audio hardware - run locally"))
     func ensureMicrophonesLoadedIdempotent() async {
         let service = AudioCaptureService()
 
@@ -200,7 +200,7 @@ struct AudioCaptureServiceEnsureMicrophonesLoadedTests {
         #expect(firstCount == secondCount)
     }
 
-    @Test("ensureMicrophonesLoaded maintains idle state")
+    @Test("ensureMicrophonesLoaded maintains idle state", .disabled("Requires audio hardware - run locally"))
     func ensureMicrophonesLoadedMaintainsIdleState() async {
         let service = AudioCaptureService()
 
@@ -215,7 +215,7 @@ struct AudioCaptureServiceEnsureMicrophonesLoadedTests {
 @Suite("AudioCaptureService: Refresh Audio Sources")
 @MainActor
 struct AudioCaptureServiceRefreshAudioSourcesTests {
-    @Test("refreshAudioSources maintains allSystemAudio as option")
+    @Test("refreshAudioSources maintains allSystemAudio as option", .disabled("Requires audio hardware - run locally"))
     func refreshAudioSourcesMaintainsAllSystemAudio() async {
         let service = AudioCaptureService()
 
@@ -224,7 +224,7 @@ struct AudioCaptureServiceRefreshAudioSourcesTests {
         #expect(service.availableAudioSources.contains(.allSystemAudio))
     }
 
-    @Test("refreshAudioSources resets to allSystemAudio if selected source removed")
+    @Test("refreshAudioSources resets to allSystemAudio if selected source removed", .disabled("Requires audio hardware - run locally"))
     func refreshAudioSourcesResetsSelectionIfRemoved() async {
         let service = AudioCaptureService()
 
