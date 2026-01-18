@@ -319,10 +319,10 @@ final class TranslationViewModel {
         translationService: any TranslationServiceProtocol = TranslationService(),
         speechSynthesisService: (any SpeechSynthesisServiceProtocol)? = nil
     ) {
-        // Use factories to get appropriate services (stubs in tests, real in production)
+        // Use factories to get appropriate services (stubs on CI, real in production)
         self.audioCaptureService = audioCaptureService ?? createAudioCaptureService()
-        self.microphoneSpeechService = microphoneSpeechService ?? SpeechRecognitionService(identifier: "MICROPHONE")
-        self.systemAudioSpeechService = systemAudioSpeechService ?? SpeechRecognitionService(identifier: "SYSTEM_AUDIO")
+        self.microphoneSpeechService = microphoneSpeechService ?? createSpeechRecognitionService(identifier: "MICROPHONE")
+        self.systemAudioSpeechService = systemAudioSpeechService ?? createSpeechRecognitionService(identifier: "SYSTEM_AUDIO")
         self.translationService = translationService
         self.speechSynthesisService = speechSynthesisService ?? createSpeechSynthesisService()
     }

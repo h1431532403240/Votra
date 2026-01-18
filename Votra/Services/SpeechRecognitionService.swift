@@ -144,6 +144,67 @@ protocol SpeechRecognitionServiceProtocol: Sendable {
     func supportedLanguages() async -> [Locale]
 }
 
+// MARK: - Factory
+
+/// Factory function to create the appropriate SpeechRecognitionService
+/// Uses StubSpeechRecognitionService on CI to avoid audio hardware access and process hangs
+@MainActor
+func createSpeechRecognitionService(identifier: String) -> any SpeechRecognitionServiceProtocol {
+    // Detect CI environment (GitHub Actions sets CI=true)
+    // This allows local tests to use real hardware, but CI uses stub
+    if ProcessInfo.processInfo.environment["CI"] == "true" {
+        return StubSpeechRecognitionService(identifier: identifier)
+    }
+    return SpeechRecognitionService(identifier: identifier)
+}
+
+// MARK: - Stub for CI/Testing
+
+/// Stub implementation that doesn't access audio hardware or speech framework
+/// Used in CI environments to prevent HALC polling hangs
+@MainActor
+@Observable
+final class StubSpeechRecognitionService: SpeechRecognitionServiceProtocol {
+    private(set) var state: SpeechRecognitionState = .idle
+    private(set) var sourceLocale: Locale = .current
+
+    let identifier: String
+
+    init(identifier: String) {
+        self.identifier = identifier
+    }
+
+    func startRecognition(locale: Locale, accurateMode: Bool) async throws -> AsyncStream<TranscriptionResult> {
+        sourceLocale = locale
+        state = .listening
+        // Return an empty stream that finishes immediately
+        return AsyncStream { $0.finish() }
+    }
+
+    func stopRecognition() async {
+        state = .idle
+    }
+
+    func processAudio(_ buffer: AVAudioPCMBuffer) async throws {
+        // No-op - don't process audio in stub
+    }
+
+    func isLanguageAvailable(_ locale: Locale) async -> LanguageAvailability {
+        .available
+    }
+
+    func downloadLanguage(_ locale: Locale) async throws -> AsyncStream<DownloadProgress> {
+        AsyncStream { continuation in
+            continuation.yield(DownloadProgress(bytesDownloaded: 100, totalBytes: 100, isComplete: true))
+            continuation.finish()
+        }
+    }
+
+    func supportedLanguages() async -> [Locale] {
+        [Locale(identifier: "en_US"), Locale(identifier: "zh-Hant_TW")]
+    }
+}
+
 // MARK: - Implementation
 
 /// Speech recognition service using macOS 26 Speech framework
