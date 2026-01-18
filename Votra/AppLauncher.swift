@@ -15,7 +15,7 @@ import SwiftUI
 /// Main entry point for the application.
 /// Detects if running under XCTest and launches a minimal app to avoid hardware initialization.
 @main
-struct AppLauncher {
+enum AppLauncher {
     static func main() {
         if NSClassFromString("XCTestCase") == nil {
             // Production: launch the full app
