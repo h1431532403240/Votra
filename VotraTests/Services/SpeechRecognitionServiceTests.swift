@@ -10,7 +10,7 @@ import Foundation
 import Testing
 @testable import Votra
 
-@Suite("SpeechRecognitionService Tests")
+@Suite("SpeechRecognitionService Tests", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct SpeechRecognitionServiceTests {
     // MARK: - SpeechRecognitionState Tests

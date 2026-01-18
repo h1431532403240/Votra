@@ -16,7 +16,7 @@ enum AudioCaptureServiceTests {}
 
 // MARK: - Service Initialization Tests
 
-@Suite("AudioCaptureService: Initialization")
+@Suite("AudioCaptureService: Initialization", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceInitTests {
     @Test("Service initializes with idle state")
@@ -60,7 +60,7 @@ struct AudioCaptureServiceInitTests {
 
 // MARK: - Microphone Selection Tests
 
-@Suite("AudioCaptureService: Microphone Selection")
+@Suite("AudioCaptureService: Microphone Selection", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceMicrophoneSelectionTests {
     @Test("selectMicrophone throws deviceNotFound for unavailable device")
@@ -99,7 +99,7 @@ struct AudioCaptureServiceMicrophoneSelectionTests {
 
 // MARK: - Audio Source Selection Tests
 
-@Suite("AudioCaptureService: Audio Source Selection")
+@Suite("AudioCaptureService: Audio Source Selection", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceAudioSourceSelectionTests {
     @Test("selectAudioSource accepts allSystemAudio")
@@ -142,7 +142,7 @@ struct AudioCaptureServiceAudioSourceSelectionTests {
 
 // MARK: - Stop Capture Tests
 
-@Suite("AudioCaptureService: Stop Capture")
+@Suite("AudioCaptureService: Stop Capture", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceStopCaptureTests {
     @Test("stopAllCapture succeeds when idle")
@@ -183,7 +183,7 @@ struct AudioCaptureServiceStopCaptureTests {
 
 // MARK: - Ensure Microphones Loaded Tests
 
-@Suite("AudioCaptureService: Ensure Microphones Loaded")
+@Suite("AudioCaptureService: Ensure Microphones Loaded", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceEnsureMicrophonesLoadedTests {
     @Test("ensureMicrophonesLoaded can be called multiple times", .disabled("Requires audio hardware - run locally"))
@@ -212,7 +212,7 @@ struct AudioCaptureServiceEnsureMicrophonesLoadedTests {
 
 // MARK: - Refresh Audio Sources Tests
 
-@Suite("AudioCaptureService: Refresh Audio Sources")
+@Suite("AudioCaptureService: Refresh Audio Sources", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceRefreshAudioSourcesTests {
     @Test("refreshAudioSources maintains allSystemAudio as option", .disabled("Requires audio hardware - run locally"))
@@ -240,7 +240,7 @@ struct AudioCaptureServiceRefreshAudioSourcesTests {
 
 // MARK: - Protocol Conformance Tests
 
-@Suite("AudioCaptureService: Protocol Conformance")
+@Suite("AudioCaptureService: Protocol Conformance", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceProtocolConformanceTests {
     @Test("Service conforms to AudioCaptureServiceProtocol")
@@ -272,7 +272,7 @@ struct AudioCaptureServiceProtocolConformanceTests {
 
 // MARK: - State Type Tests
 
-@Suite("AudioCaptureService: State Type")
+@Suite("AudioCaptureService: State Type", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceStateTypeTests {
     @Test("State enum has all expected cases")
@@ -303,7 +303,7 @@ struct AudioCaptureServiceStateTypeTests {
 
 // MARK: - Error Type Tests
 
-@Suite("AudioCaptureService: Error Type")
+@Suite("AudioCaptureService: Error Type", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceErrorTypeTests {
     @Test("All error cases have non-empty descriptions")
@@ -353,7 +353,7 @@ struct AudioCaptureServiceErrorTypeTests {
 
 // MARK: - Audio Device Type Tests
 
-@Suite("AudioCaptureService: AudioDevice Type")
+@Suite("AudioCaptureService: AudioDevice Type", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceAudioDeviceTypeTests {
     @Test("AudioDevice stores all properties")
@@ -402,7 +402,7 @@ struct AudioCaptureServiceAudioDeviceTypeTests {
 
 // MARK: - Permission Status Type Tests
 
-@Suite("AudioCaptureService: AudioPermissionStatus Type")
+@Suite("AudioCaptureService: AudioPermissionStatus Type", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServicePermissionStatusTypeTests {
     @Test("PermissionState has all expected cases")
@@ -461,7 +461,7 @@ struct AudioCaptureServicePermissionStatusTypeTests {
 
 // MARK: - Internal Class Instantiation Tests
 
-@Suite("AudioCaptureService: Internal Classes")
+@Suite("AudioCaptureService: Internal Classes", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceInternalClassesTests {
     @Test("MicrophoneAudioCapture can be instantiated")
@@ -523,7 +523,7 @@ struct AudioCaptureServiceInternalClassesTests {
 
 // MARK: - Observable Behavior Tests
 
-@Suite("AudioCaptureService: Observable Behavior")
+@Suite("AudioCaptureService: Observable Behavior", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceObservableBehaviorTests {
     @Test("Service is Observable")
@@ -558,7 +558,7 @@ struct AudioCaptureServiceObservableBehaviorTests {
 
 // MARK: - Error Description Verification Tests
 
-@Suite("AudioCaptureService: Error Descriptions")
+@Suite("AudioCaptureService: Error Descriptions", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceErrorDescriptionTests {
     @Test("microphonePermissionDenied has non-nil description")
@@ -613,7 +613,7 @@ struct AudioCaptureServiceErrorDescriptionTests {
 
 // MARK: - Error Recovery Suggestion Tests
 
-@Suite("AudioCaptureService: Error Recovery Suggestions")
+@Suite("AudioCaptureService: Error Recovery Suggestions", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceErrorRecoverySuggestionTests {
     @Test("microphonePermissionDenied has non-nil recovery suggestion")
@@ -658,7 +658,7 @@ struct AudioCaptureServiceErrorRecoverySuggestionTests {
 
 // MARK: - AudioDevice Equality Edge Cases Tests
 
-@Suite("AudioCaptureService: AudioDevice Equality")
+@Suite("AudioCaptureService: AudioDevice Equality", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceAudioDeviceEqualityTests {
     @Test("Devices with same ID but different name are equal")
@@ -700,7 +700,7 @@ struct AudioCaptureServiceAudioDeviceEqualityTests {
 
 // MARK: - AudioDevice Hashable Tests
 
-@Suite("AudioCaptureService: AudioDevice Hashable")
+@Suite("AudioCaptureService: AudioDevice Hashable", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceAudioDeviceHashableTests {
     @Test("Different devices produce different hash values")
@@ -739,7 +739,7 @@ struct AudioCaptureServiceAudioDeviceHashableTests {
 
 // MARK: - Permission Status Combinations Tests
 
-@Suite("AudioCaptureService: Permission Status Combinations")
+@Suite("AudioCaptureService: Permission Status Combinations", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCapturePermissionCombinationsTests {
     @Test("All permission state combinations for microphone")
@@ -791,7 +791,7 @@ struct AudioCapturePermissionCombinationsTests {
 
 // MARK: - State Enum Tests
 
-@Suite("AudioCaptureService: State Enum")
+@Suite("AudioCaptureService: State Enum", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceStateEnumTests {
     @Test("All state cases are distinct")
@@ -844,7 +844,7 @@ struct AudioCaptureServiceStateEnumTests {
 
 // MARK: - MicrophoneAudioCapture Tests
 
-@Suite("AudioCaptureService: MicrophoneAudioCapture")
+@Suite("AudioCaptureService: MicrophoneAudioCapture", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceMicrophoneAudioCaptureTests {
     @Test("MicrophoneAudioCapture can select multiple devices sequentially")
@@ -875,7 +875,7 @@ struct AudioCaptureServiceMicrophoneAudioCaptureTests {
 
 // MARK: - SystemAudioCapture Tests
 
-@Suite("AudioCaptureService: SystemAudioCapture")
+@Suite("AudioCaptureService: SystemAudioCapture", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceSystemAudioCaptureTests {
     @Test("SystemAudioCapture selectedSource can be set to nil")
@@ -914,7 +914,7 @@ struct AudioCaptureServiceSystemAudioCaptureTests {
 
 // MARK: - Service Audio Source Selection Edge Cases
 
-@Suite("AudioCaptureService: Audio Source Selection Edge Cases")
+@Suite("AudioCaptureService: Audio Source Selection Edge Cases", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureSourceSelectionEdgeCaseTests {
     @Test("selectAudioSource with allSystemAudio clears systemAudioCapture selectedSource")
@@ -959,7 +959,7 @@ struct AudioCaptureSourceSelectionEdgeCaseTests {
 
 // MARK: - Service State After Operations Tests
 
-@Suite("AudioCaptureService: State After Operations")
+@Suite("AudioCaptureService: State After Operations", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceStateAfterOperationsTests {
     @Test("State remains idle after stopCapture from microphone when idle")
@@ -1021,7 +1021,7 @@ struct AudioCaptureServiceStateAfterOperationsTests {
 
 // MARK: - Error Underlying Tests
 
-@Suite("AudioCaptureService: Error Underlying")
+@Suite("AudioCaptureService: Error Underlying", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceErrorUnderlyingTests {
     @Test("engineStartFailed preserves error domain")
@@ -1086,7 +1086,7 @@ struct AudioCaptureServiceErrorUnderlyingTests {
 
 // MARK: - Stream Handler Tests
 
-@Suite("AudioCaptureService: Stream Handlers")
+@Suite("AudioCaptureService: Stream Handlers", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceStreamHandlerTests {
     @Test("AudioStreamOutputHandler can be created with closure")
@@ -1114,7 +1114,7 @@ struct AudioCaptureServiceStreamHandlerTests {
 
 // MARK: - Service Configuration Tests
 
-@Suite("AudioCaptureService: Configuration")
+@Suite("AudioCaptureService: Configuration", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceConfigurationTests {
     @Test("Service has expected default audio source")
@@ -1139,7 +1139,7 @@ struct AudioCaptureServiceConfigurationTests {
 
 // MARK: - Concurrent Access Tests
 
-@Suite("AudioCaptureService: Concurrent Access")
+@Suite("AudioCaptureService: Concurrent Access", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceConcurrentAccessTests {
     @Test("Service can be accessed from MainActor context")
@@ -1191,7 +1191,7 @@ struct AudioCaptureServiceConcurrentAccessTests {
 
 // MARK: - PermissionState Sendable Tests
 
-@Suite("AudioCaptureService: PermissionState Sendable")
+@Suite("AudioCaptureService: PermissionState Sendable", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServicePermissionStateSendableTests {
     @Test("PermissionState authorized is Sendable")
