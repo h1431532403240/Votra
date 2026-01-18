@@ -13,9 +13,12 @@ import ScreenCaptureKit
 import Testing
 @testable import Votra
 
+/// Check if running in CI environment - tests requiring audio hardware should be skipped
+private let isNotCI = ProcessInfo.processInfo.environment["CI"] != "true"
+
 // MARK: - System Audio Capture Configuration Tests
 
-@Suite("System Audio Capture Configuration", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("System Audio Capture Configuration", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct SystemAudioCaptureConfigurationTests {
     @Test("Expected audio sample rate is 48000 Hz for system audio")
@@ -44,7 +47,7 @@ struct SystemAudioCaptureConfigurationTests {
 
 // MARK: - System Audio Capture Selected Source Tests
 
-@Suite("System Audio Capture Source Selection", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("System Audio Capture Source Selection", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct SystemAudioCaptureSourceSelectionTests {
     @Test("Selected source is nil by default (captures all system audio)")
@@ -144,7 +147,7 @@ struct SystemAudioCaptureSourceSelectionTests {
 
 // MARK: - System Audio Capture Stop Safety Tests
 
-@Suite("System Audio Capture Stop Safety", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("System Audio Capture Stop Safety", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct SystemAudioCaptureStopSafetyTests {
     @Test("Stop capture is safe when not capturing")
@@ -181,7 +184,7 @@ struct SystemAudioCaptureStopSafetyTests {
 
 // MARK: - System Audio Capture Capture Already Active Tests
 
-@Suite("System Audio Capture Already Active Error", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("System Audio Capture Already Active Error", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct SystemAudioCaptureAlreadyActiveTests {
     @Test("captureAlreadyActive error has descriptive message")
@@ -203,7 +206,7 @@ struct SystemAudioCaptureAlreadyActiveTests {
 
 // MARK: - Audio Source Info Display Name Tests
 
-@Suite("System Audio Source Display Name Logic", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("System Audio Source Display Name Logic", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct SystemAudioSourceDisplayNameTests {
     @Test("All system audio uses name as display name")
@@ -286,7 +289,7 @@ struct SystemAudioSourceDisplayNameTests {
 
 // MARK: - Audio Source Info Window Level Detection Tests
 
-@Suite("System Audio Source Window Level Detection", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("System Audio Source Window Level Detection", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct SystemAudioSourceWindowLevelDetectionTests {
     @Test("Source with windowID is window level")
@@ -331,7 +334,7 @@ struct SystemAudioSourceWindowLevelDetectionTests {
 
 // MARK: - Audio Capture Service Source Management Tests
 
-@Suite("Audio Capture Service Source Management", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Audio Capture Service Source Management", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct AudioCaptureServiceSourceManagementTests {
     @Test("Service always has all system audio in available sources")
@@ -391,7 +394,7 @@ struct AudioCaptureServiceSourceManagementTests {
 
 // MARK: - Screen Recording Permission Error Tests
 
-@Suite("Screen Recording Permission Error", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Screen Recording Permission Error", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct ScreenRecordingPermissionErrorTests {
     @Test("screenRecordingPermissionDenied error has descriptive message")
@@ -421,7 +424,7 @@ struct ScreenRecordingPermissionErrorTests {
 
 // MARK: - Device Not Found Error for System Audio Tests
 
-@Suite("Device Not Found Error for System Audio", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Device Not Found Error for System Audio", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct DeviceNotFoundErrorForSystemAudioTests {
     @Test("deviceNotFound error is used for missing display")
@@ -452,7 +455,7 @@ struct DeviceNotFoundErrorForSystemAudioTests {
 
 // MARK: - Engine Start Failed Error with System Audio Context Tests
 
-@Suite("Engine Start Failed Error with System Audio Context", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Engine Start Failed Error with System Audio Context", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct EngineStartFailedErrorSystemAudioTests {
     @Test("engineStartFailed wraps ScreenCaptureKit errors")
@@ -488,7 +491,7 @@ struct EngineStartFailedErrorSystemAudioTests {
 
 // MARK: - Audio Stream Output Handler Initialization Tests
 
-@Suite("Audio Stream Output Handler Initialization", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Audio Stream Output Handler Initialization", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct AudioStreamOutputHandlerInitTests {
     @Test("Handler stores callback for later invocation")
@@ -519,7 +522,7 @@ struct AudioStreamOutputHandlerInitTests {
 
 // MARK: - Video Stream Output Handler Purpose Tests
 
-@Suite("Video Stream Output Handler Purpose", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Video Stream Output Handler Purpose", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct VideoStreamOutputHandlerPurposeTests {
     @Test("Video handler exists to prevent ScreenCaptureKit warnings")
@@ -540,7 +543,7 @@ struct VideoStreamOutputHandlerPurposeTests {
 
 // MARK: - Stream Delegate Error Handling Tests
 
-@Suite("Stream Delegate Error Handling", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Stream Delegate Error Handling", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct StreamDelegateErrorHandlingTests {
     @Test("Stream delegate handles stream stopped with error")
@@ -560,7 +563,7 @@ struct StreamDelegateErrorHandlingTests {
 
 // MARK: - Thread Safety for System Audio Types Tests
 
-@Suite("Thread Safety for System Audio Types", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+@Suite("Thread Safety for System Audio Types", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct ThreadSafetyForSystemAudioTypesTests {
     @Test("AudioSourceInfo can be passed between tasks")

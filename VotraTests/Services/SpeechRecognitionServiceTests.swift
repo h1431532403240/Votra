@@ -10,7 +10,10 @@ import Foundation
 import Testing
 @testable import Votra
 
-@Suite("SpeechRecognitionService Tests", .disabled(if: ProcessInfo.processInfo.environment["CI"] == "true", "Requires audio hardware - run locally"))
+/// Check if running in CI environment - tests requiring audio hardware should be skipped
+private let isNotCI = ProcessInfo.processInfo.environment["CI"] != "true"
+
+@Suite("SpeechRecognitionService Tests", .enabled(if: isNotCI, "Requires audio hardware - run locally"))
 @MainActor
 struct SpeechRecognitionServiceTests {
     // MARK: - SpeechRecognitionState Tests
