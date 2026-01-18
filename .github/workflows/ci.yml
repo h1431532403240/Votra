@@ -82,7 +82,7 @@ jobs:
 
       # 7. Run unit tests
       # Uses Votra-CI scheme which excludes VotraUITests (requires code signing)
-      # Audio hardware tests are skipped via scheme's SkippedTests (no audio hardware on CI runners)
+      # Audio hardware tests are skipped via -skip-testing-tags (Xcode 16.3+ feature)
       - name: Test
         run: |
           set -euo pipefail
@@ -93,6 +93,7 @@ jobs:
             -configuration Debug \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
+            -skip-testing-tags requiresHardware \
             -resultBundlePath TestResults.xcresult
 
       # 8. Upload test results
