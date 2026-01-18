@@ -425,7 +425,7 @@ struct MicrophoneAudioCaptureUnitTests {
 
 @Suite("Microphone Audio Capture Actor Isolation Tests")
 struct MicrophoneAudioCaptureActorIsolationTests {
-    @Test("Audio tap callback runs without actor isolation crash")
+    @Test("Audio tap callback runs without actor isolation crash", .disabled("Requires audio hardware - run locally"))
     @MainActor
     func audioTapDoesNotCrashFromActorIsolation() async throws {
         // This test validates that the audio tap callback can be invoked
@@ -478,7 +478,7 @@ struct MicrophoneAudioCaptureActorIsolationTests {
         }
     }
 
-    @Test("Start and stop capture multiple times without crash")
+    @Test("Start and stop capture multiple times without crash", .disabled("Requires audio hardware - run locally"))
     @MainActor
     func multipleStartStopCycles() async throws {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)

@@ -165,7 +165,7 @@ struct AudioDiagnosticsTests {
 
     // MARK: - runDiagnostics Tests
 
-    @Test("runDiagnostics returns valid result")
+    @Test("runDiagnostics returns valid result", .disabled("Queries hardware - run locally"))
     func runDiagnosticsReturnsValidResult() async {
         let result = await AudioDiagnostics.runDiagnostics()
 
@@ -181,7 +181,7 @@ struct AudioDiagnosticsTests {
         #expect(result.availableApps >= 0)
     }
 
-    @Test("runDiagnostics macOS version format is correct")
+    @Test("runDiagnostics macOS version format is correct", .disabled("Queries hardware - run locally"))
     func runDiagnosticsMacOSVersionFormat() async {
         let result = await AudioDiagnostics.runDiagnostics()
 
@@ -195,7 +195,7 @@ struct AudioDiagnosticsTests {
         }
     }
 
-    @Test("runDiagnostics microphone permission is valid status")
+    @Test("runDiagnostics microphone permission is valid status", .disabled("Queries hardware - run locally"))
     func runDiagnosticsMicrophonePermissionStatus() async {
         let result = await AudioDiagnostics.runDiagnostics()
 
@@ -211,7 +211,7 @@ struct AudioDiagnosticsTests {
         #expect(containsValidStatus, "Microphone permission should contain a valid status")
     }
 
-    @Test("runDiagnostics screen recording permission is valid")
+    @Test("runDiagnostics screen recording permission is valid", .disabled("Queries hardware - run locally"))
     func runDiagnosticsScreenRecordingPermissionStatus() async {
         let result = await AudioDiagnostics.runDiagnostics()
 
@@ -226,7 +226,7 @@ struct AudioDiagnosticsTests {
 
     // MARK: - printDiagnostics Tests
 
-    @Test("printDiagnostics completes without error")
+    @Test("printDiagnostics completes without error", .disabled("Queries hardware - run locally"))
     func printDiagnosticsCompletes() async {
         // This test verifies printDiagnostics runs without throwing
         await AudioDiagnostics.printDiagnostics()
