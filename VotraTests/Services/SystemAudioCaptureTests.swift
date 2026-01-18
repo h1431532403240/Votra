@@ -13,9 +13,6 @@ import ScreenCaptureKit
 import Testing
 @testable import Votra
 
-/// Check if running in CI environment - tests requiring audio hardware should be skipped
-
-
 // MARK: - System Audio Capture Configuration Tests
 
 @Suite("System Audio Capture Configuration", .tags(.requiresHardware))

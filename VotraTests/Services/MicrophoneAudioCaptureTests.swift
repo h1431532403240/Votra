@@ -14,9 +14,6 @@ import Testing
 /// Namespace for MicrophoneAudioCapture tests
 enum MicrophoneAudioCaptureTests {}
 
-/// Check if running in CI environment - tests requiring audio hardware should be skipped
-
-
 // MARK: - Audio Capture Error Tests
 
 @Suite("Audio Capture Error Tests", .tags(.requiresHardware))

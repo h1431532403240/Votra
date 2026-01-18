@@ -10,9 +10,6 @@ import Foundation
 import Testing
 @testable import Votra
 
-/// Check if running in CI environment - tests requiring audio hardware should be skipped
-
-
 @Suite("SpeechRecognitionService Tests", .tags(.requiresHardware))
 @MainActor
 struct SpeechRecognitionServiceTests {
