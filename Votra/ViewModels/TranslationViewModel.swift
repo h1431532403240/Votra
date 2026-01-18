@@ -313,13 +313,14 @@ final class TranslationViewModel {
     // MARK: - Initialization
 
     init(
-        audioCaptureService: any AudioCaptureServiceProtocol = AudioCaptureService(),
+        audioCaptureService: (any AudioCaptureServiceProtocol)? = nil,
         microphoneSpeechService: (any SpeechRecognitionServiceProtocol)? = nil,
         systemAudioSpeechService: (any SpeechRecognitionServiceProtocol)? = nil,
         translationService: any TranslationServiceProtocol = TranslationService(),
         speechSynthesisService: any SpeechSynthesisServiceProtocol = SpeechSynthesisService()
     ) {
-        self.audioCaptureService = audioCaptureService
+        // Use factory to get appropriate service (stub in tests, real in production)
+        self.audioCaptureService = audioCaptureService ?? createAudioCaptureService()
         self.microphoneSpeechService = microphoneSpeechService ?? SpeechRecognitionService(identifier: "MICROPHONE")
         self.systemAudioSpeechService = systemAudioSpeechService ?? SpeechRecognitionService(identifier: "SYSTEM_AUDIO")
         self.translationService = translationService
