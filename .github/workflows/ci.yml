@@ -82,6 +82,7 @@ jobs:
 
       # 7. Run unit tests
       # Uses Votra-CI scheme which excludes VotraUITests (requires code signing)
+      # Audio hardware tests are skipped via scheme's SkippedTests (no audio hardware on CI runners)
       - name: Test
         run: |
           set -euo pipefail
