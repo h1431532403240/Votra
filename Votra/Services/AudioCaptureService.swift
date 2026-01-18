@@ -133,11 +133,12 @@ protocol AudioCaptureServiceProtocol: Sendable {
 // MARK: - Factory
 
 /// Factory function to create the appropriate AudioCaptureService
-/// Uses StubAudioCaptureService in test environments to avoid hardware access
+/// Uses StubAudioCaptureService on CI to avoid hardware access and process hangs
 @MainActor
 func createAudioCaptureService() -> any AudioCaptureServiceProtocol {
-    // Detect test environment by checking for XCTestCase class
-    if NSClassFromString("XCTestCase") != nil {
+    // Detect CI environment (GitHub Actions sets CI=true)
+    // This allows local tests to use real hardware, but CI uses stub
+    if ProcessInfo.processInfo.environment["CI"] == "true" {
         return StubAudioCaptureService()
     }
     return AudioCaptureService()

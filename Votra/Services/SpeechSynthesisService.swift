@@ -135,6 +135,78 @@ protocol SpeechSynthesisServiceProtocol: Sendable {
     func enqueue(_ text: String, locale: Locale, voicePreference: VoicePreference) async
 }
 
+// MARK: - Factory
+
+/// Factory function to create the appropriate SpeechSynthesisService
+/// Uses StubSpeechSynthesisService on CI to avoid audio hardware access and process hangs
+@MainActor
+func createSpeechSynthesisService() -> any SpeechSynthesisServiceProtocol {
+    // Detect CI environment (GitHub Actions sets CI=true)
+    // This allows local tests to use real hardware, but CI uses stub
+    if ProcessInfo.processInfo.environment["CI"] == "true" {
+        return StubSpeechSynthesisService()
+    }
+    return SpeechSynthesisService()
+}
+
+// MARK: - Stub for CI/Testing
+
+/// Stub implementation that doesn't access audio hardware
+/// Used in CI environments and unit tests to prevent HALC polling hangs
+@MainActor
+@Observable
+final class StubSpeechSynthesisService: SpeechSynthesisServiceProtocol {
+    private(set) var state: SpeechSynthesisState = .idle
+    private(set) var isPersonalVoiceAuthorized: Bool = false
+
+    var speechRate: Float = 0.5
+
+    var isSpeaking: Bool { state == .speaking }
+
+    func speak(_ text: String, locale: Locale, voicePreference: VoicePreference) async {
+        guard !text.isEmpty else { return }
+        state = .speaking
+        // Simulate speech completion without actual audio
+        state = .idle
+    }
+
+    func stopSpeaking() async {
+        state = .idle
+    }
+
+    func pauseSpeaking() async {
+        if state == .speaking {
+            state = .paused
+        }
+    }
+
+    func continueSpeaking() async {
+        if state == .paused {
+            state = .speaking
+            state = .idle
+        }
+    }
+
+    func requestPersonalVoiceAuthorization() async -> PersonalVoiceAuthorizationStatus {
+        .authorized
+    }
+
+    func availableVoices(for locale: Locale) -> [VoiceInfo] {
+        // Return a minimal stub voice
+        [VoiceInfo(
+            id: "com.apple.voice.stub",
+            name: "Stub Voice",
+            locale: locale,
+            quality: .default,
+            isPersonalVoice: false
+        )]
+    }
+
+    func enqueue(_ text: String, locale: Locale, voicePreference: VoicePreference) async {
+        await speak(text, locale: locale, voicePreference: voicePreference)
+    }
+}
+
 // MARK: - Implementation
 
 /// Speech synthesis service using AVSpeechSynthesizer
