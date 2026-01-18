@@ -9,7 +9,6 @@ import SwiftUI
 import SwiftData
 @preconcurrency import Translation
 
-@main
 struct VotraApp: App {
     // MARK: - Type Properties
 
