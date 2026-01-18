@@ -81,11 +81,11 @@ jobs:
             CODE_SIGNING_REQUIRED=NO
 
       # 7. Run unit tests
-      # Uses Votra-CI scheme which excludes VotraUITests (requires code signing)
-      # Audio hardware tests are skipped via -skip-testing-tags (Xcode 16.3+ feature)
+      # Uses -skip-testing-tags to skip audio hardware tests
+      # Monitors output and terminates when tests complete (avoids HALC cleanup hang)
       - name: Test
         run: |
-          set -euo pipefail
+          # Run xcodebuild in background, pipe output to monitor script
           xcodebuild test \
             -project Votra.xcodeproj \
             -scheme Votra-CI \
@@ -94,7 +94,43 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             -skip-testing-tags requiresHardware \
-            -resultBundlePath TestResults.xcresult
+            -resultBundlePath TestResults.xcresult 2>&1 &
+          XCODE_PID=$!
+
+          # Monitor output for test completion
+          test_result=""
+          while kill -0 $XCODE_PID 2>/dev/null; do
+            # Check if result bundle exists and has test results
+            if [ -d "TestResults.xcresult" ]; then
+              # Use xcrun xcresulttool to check test status
+              status=$(xcrun xcresulttool get --format json --path TestResults.xcresult 2>/dev/null | grep -o '"testsCount":[0-9]*' | head -1 || true)
+              if [ -n "$status" ]; then
+                # Tests have completed, check if they passed
+                if xcrun xcresulttool get --format json --path TestResults.xcresult 2>/dev/null | grep -q '"testFailureCount":0'; then
+                  test_result="passed"
+                  echo "✓ Tests passed, terminating xcodebuild"
+                  kill $XCODE_PID 2>/dev/null || true
+                  break
+                fi
+              fi
+            fi
+            sleep 2
+          done
+
+          # Wait briefly for process to terminate
+          sleep 2
+          kill -9 $XCODE_PID 2>/dev/null || true
+
+          # Determine exit code based on test results
+          if [ "$test_result" = "passed" ]; then
+            exit 0
+          elif [ -d "TestResults.xcresult" ]; then
+            # Check result bundle for failures
+            if xcrun xcresulttool get --format json --path TestResults.xcresult 2>/dev/null | grep -q '"testFailureCount":0'; then
+              exit 0
+            fi
+          fi
+          exit 1
 
       # 8. Upload test results
       - name: Upload Test Results
