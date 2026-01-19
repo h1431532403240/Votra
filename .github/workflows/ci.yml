@@ -82,10 +82,13 @@ jobs:
 
       # 7. Run unit tests
       # Uses -skip-testing-tags to skip audio hardware tests
-      # Monitors output and terminates when tests complete (avoids HALC cleanup hang)
+      # Monitors stdout for test completion and terminates (avoids HALC cleanup hang)
       - name: Test
         run: |
-          # Run xcodebuild in background, pipe output to monitor script
+          # Create a named pipe for output monitoring
+          mkfifo /tmp/xcodebuild_output
+
+          # Run xcodebuild, tee output to pipe and log file
           xcodebuild test \
             -project Votra.xcodeproj \
             -scheme Votra-CI \
@@ -94,43 +97,43 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             -skip-testing-tags requiresHardware \
-            -resultBundlePath TestResults.xcresult 2>&1 &
-          XCODE_PID=$!
+            -resultBundlePath TestResults.xcresult 2>&1 | tee /tmp/xcodebuild.log > /tmp/xcodebuild_output &
+          TEE_PID=$!
 
           # Monitor output for test completion
           test_result=""
-          while kill -0 $XCODE_PID 2>/dev/null; do
-            # Check if result bundle exists and has test results
-            if [ -d "TestResults.xcresult" ]; then
-              # Use xcrun xcresulttool to check test status
-              status=$(xcrun xcresulttool get --format json --path TestResults.xcresult 2>/dev/null | grep -o '"testsCount":[0-9]*' | head -1 || true)
-              if [ -n "$status" ]; then
-                # Tests have completed, check if they passed
-                if xcrun xcresulttool get --format json --path TestResults.xcresult 2>/dev/null | grep -q '"testFailureCount":0'; then
-                  test_result="passed"
-                  echo "✓ Tests passed, terminating xcodebuild"
-                  kill $XCODE_PID 2>/dev/null || true
-                  break
-                fi
-              fi
+          while IFS= read -r line; do
+            echo "$line"
+            # Check for test completion markers
+            if echo "$line" | grep -q "Test session results:"; then
+              # Next few lines will have pass/fail info
+              test_result="checking"
             fi
-            sleep 2
-          done
+            if echo "$line" | grep -q "\*\* TEST SUCCEEDED \*\*"; then
+              test_result="passed"
+              echo "✓ Tests passed, terminating xcodebuild"
+              break
+            fi
+            if echo "$line" | grep -q "\*\* TEST FAILED \*\*"; then
+              test_result="failed"
+              echo "✗ Tests failed"
+              break
+            fi
+          done < /tmp/xcodebuild_output
 
-          # Wait briefly for process to terminate
+          # Cleanup: kill tee and any remaining xcodebuild processes
+          kill $TEE_PID 2>/dev/null || true
+          pkill -f "xcodebuild.*Votra-CI" 2>/dev/null || true
           sleep 2
-          kill -9 $XCODE_PID 2>/dev/null || true
+          pkill -9 -f "xcodebuild.*Votra-CI" 2>/dev/null || true
+          rm -f /tmp/xcodebuild_output
 
-          # Determine exit code based on test results
+          # Exit based on test result
           if [ "$test_result" = "passed" ]; then
             exit 0
-          elif [ -d "TestResults.xcresult" ]; then
-            # Check result bundle for failures
-            if xcrun xcresulttool get --format json --path TestResults.xcresult 2>/dev/null | grep -q '"testFailureCount":0'; then
-              exit 0
-            fi
+          else
+            exit 1
           fi
-          exit 1
 
       # 8. Upload test results
       - name: Upload Test Results
