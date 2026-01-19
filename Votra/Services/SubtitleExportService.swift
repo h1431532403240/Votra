@@ -248,6 +248,10 @@ final class SubtitleExportService: SubtitleExportServiceProtocol {
         let exportURL = StoragePaths.exportURL(sessionId: sessionId, format: format.fileExtension)
 
         do {
+            // Ensure the exports directory exists before writing
+            let exportsDir = exportURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: exportsDir, withIntermediateDirectories: true)
+
             try content.write(to: exportURL, atomically: true, encoding: .utf8)
             return exportURL
         } catch {

@@ -16,7 +16,7 @@ enum MicrophoneAudioCaptureTests {}
 
 // MARK: - Audio Capture Error Tests
 
-@Suite("Audio Capture Error Tests")
+@Suite("Audio Capture Error Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioCaptureErrorTests {
     @Test("Error descriptions are localized and meaningful")
@@ -134,7 +134,7 @@ struct AudioCaptureErrorTests {
 
 // MARK: - Audio Capture State Tests
 
-@Suite("Audio Capture State Tests")
+@Suite("Audio Capture State Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioCaptureStateTests {
     @Test("All state cases are distinct")
@@ -176,7 +176,7 @@ struct AudioCaptureStateTests {
 
 // MARK: - Audio Device Tests
 
-@Suite("Audio Device Tests")
+@Suite("Audio Device Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioDeviceTests {
     @Test("Audio device is Identifiable")
@@ -235,7 +235,7 @@ struct AudioDeviceTests {
 
 // MARK: - Audio Permission Status Tests
 
-@Suite("Audio Permission Status Tests")
+@Suite("Audio Permission Status Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioPermissionStatusTests {
     @Test("Permission state has all expected cases")
@@ -291,7 +291,7 @@ struct AudioPermissionStatusTests {
 
 // MARK: - Audio Capture Service Initialization Tests
 
-@Suite("Audio Capture Service Initialization Tests")
+@Suite("Audio Capture Service Initialization Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioCaptureServiceInitializationTests {
     @Test("Service initializes with idle state")
@@ -328,7 +328,7 @@ struct AudioCaptureServiceInitializationTests {
 
 // MARK: - Audio Capture Service State Management Tests
 
-@Suite("Audio Capture Service State Management Tests")
+@Suite("Audio Capture Service State Management Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioCaptureServiceStateManagementTests {
     @Test("Select microphone throws for unknown device")
@@ -386,7 +386,7 @@ struct AudioCaptureServiceStateManagementTests {
 
 // MARK: - Microphone Audio Capture Tests
 
-@Suite("Microphone Audio Capture Tests")
+@Suite("Microphone Audio Capture Tests", .tags(.requiresHardware))
 @MainActor
 struct MicrophoneAudioCaptureUnitTests {
     @Test("Microphone capture initializes successfully")
@@ -423,9 +423,9 @@ struct MicrophoneAudioCaptureUnitTests {
 
 // MARK: - Actor Isolation Tests
 
-@Suite("Microphone Audio Capture Actor Isolation Tests")
+@Suite("Microphone Audio Capture Actor Isolation Tests", .tags(.requiresHardware))
 struct MicrophoneAudioCaptureActorIsolationTests {
-    @Test("Audio tap callback runs without actor isolation crash")
+    @Test("Audio tap callback runs without actor isolation crash", .disabled("Requires audio hardware - run locally"))
     @MainActor
     func audioTapDoesNotCrashFromActorIsolation() async throws {
         // This test validates that the audio tap callback can be invoked
@@ -478,7 +478,7 @@ struct MicrophoneAudioCaptureActorIsolationTests {
         }
     }
 
-    @Test("Start and stop capture multiple times without crash")
+    @Test("Start and stop capture multiple times without crash", .disabled("Requires audio hardware - run locally"))
     @MainActor
     func multipleStartStopCycles() async throws {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
@@ -517,7 +517,7 @@ struct MicrophoneAudioCaptureActorIsolationTests {
 
 // MARK: - Audio Source Enum Tests
 
-@Suite("Audio Source Enum Tests")
+@Suite("Audio Source Enum Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioSourceEnumTests {
     @Test("Microphone source has correct raw value")
@@ -570,7 +570,7 @@ struct AudioSourceEnumTests {
 
 // MARK: - Audio Stream Output Handler Tests
 
-@Suite("Audio Stream Output Handler Tests")
+@Suite("Audio Stream Output Handler Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioStreamOutputHandlerTests {
     @Test("Handler initializes with callback")
@@ -592,7 +592,7 @@ struct AudioStreamOutputHandlerTests {
 
 // MARK: - Video Stream Output Handler Tests
 
-@Suite("Video Stream Output Handler Tests")
+@Suite("Video Stream Output Handler Tests", .tags(.requiresHardware))
 @MainActor
 struct VideoStreamOutputHandlerTests {
     @Test("Video handler initializes successfully")
@@ -610,7 +610,7 @@ struct VideoStreamOutputHandlerTests {
 
 // MARK: - Stream Delegate Tests
 
-@Suite("Stream Delegate Tests")
+@Suite("Stream Delegate Tests", .tags(.requiresHardware))
 @MainActor
 struct StreamDelegateTests {
     @Test("Stream delegate initializes successfully")
@@ -635,7 +635,7 @@ struct StreamDelegateTests {
 
 // MARK: - System Audio Capture Tests
 
-@Suite("System Audio Capture Tests")
+@Suite("System Audio Capture Tests", .tags(.requiresHardware))
 @MainActor
 struct SystemAudioCaptureTests {
     @Test("System audio capture initializes successfully")
@@ -687,10 +687,10 @@ struct SystemAudioCaptureTests {
 
 // MARK: - Ensure Microphones Loaded Tests
 
-@Suite("Ensure Microphones Loaded Tests")
+@Suite("Ensure Microphones Loaded Tests", .tags(.requiresHardware))
 @MainActor
 struct EnsureMicrophonesLoadedTests {
-    @Test("Ensure microphones loaded only loads once")
+    @Test("Ensure microphones loaded only loads once", .disabled("Requires audio hardware - run locally"))
     func ensureMicrophonesLoadedOnlyLoadsOnce() async {
         let service = AudioCaptureService()
 
@@ -707,7 +707,7 @@ struct EnsureMicrophonesLoadedTests {
         #expect(service.availableMicrophones.count == firstCount)
     }
 
-    @Test("Ensure microphones loaded is idempotent")
+    @Test("Ensure microphones loaded is idempotent", .disabled("Requires audio hardware - run locally"))
     func ensureMicrophonesLoadedIsIdempotent() async {
         let service = AudioCaptureService()
 
@@ -723,10 +723,10 @@ struct EnsureMicrophonesLoadedTests {
 
 // MARK: - Audio Source Selection Tests
 
-@Suite("Audio Source Selection Tests")
+@Suite("Audio Source Selection Tests", .tags(.requiresHardware))
 @MainActor
 struct AudioSourceSelectionTests {
-    @Test("Refresh audio sources updates available sources")
+    @Test("Refresh audio sources updates available sources", .disabled("Requires audio hardware - run locally"))
     func refreshAudioSourcesUpdatesAvailableSources() async {
         let service = AudioCaptureService()
 

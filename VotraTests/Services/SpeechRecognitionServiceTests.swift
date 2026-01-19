@@ -10,7 +10,7 @@ import Foundation
 import Testing
 @testable import Votra
 
-@Suite("SpeechRecognitionService Tests")
+@Suite("SpeechRecognitionService Tests", .tags(.requiresHardware))
 @MainActor
 struct SpeechRecognitionServiceTests {
     // MARK: - SpeechRecognitionState Tests

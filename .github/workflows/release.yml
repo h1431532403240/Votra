@@ -1,7 +1,7 @@
 # Release Workflow for Votra
 # Purpose: Build, sign, notarize, create DMG, publish to GitHub Releases
 # Environment: macos-26 runner (Apple Silicon), Xcode 26
-# Target: macOS 26.2+ (Tahoe), Apple Silicon only — FoundationModels/Translation APIs require Neural Engine
+# Target: macOS 26.0+ (Tahoe), Apple Silicon only — FoundationModels/Translation APIs require Neural Engine
 # Transparency: All logs publicly visible on GitHub Actions tab
 #
 # Secrets Required (stored in GitHub Secrets):
@@ -64,45 +64,10 @@ jobs:
             exit 1
           }
 
-      # 5. Build for testing
-      # Uses Votra-CI scheme which excludes UI tests (require signing not yet configured)
-      - name: Build for Testing
-        run: |
-          set -euo pipefail
-          xcodebuild build-for-testing \
-            -project ${{ env.PROJECT }} \
-            -scheme Votra-CI \
-            -destination 'platform=macOS,arch=arm64' \
-            -configuration Release \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO || {
-            echo "::error::Build for testing failed."
-            exit 1
-          }
+      # Note: Tests are validated in CI workflow before merge
+      # Release workflow focuses on building, signing, and notarizing
 
-      # 6. Run tests (gate - fail fast on test failures)
-      # Uses Votra-CI scheme which includes only unit tests
-      # Note: Tests require macOS 26.2+
-      - name: Run Tests
-        run: |
-          set -euo pipefail
-          MACOS_VERSION=$(sw_vers -productVersion)
-          echo "Runner macOS version: $MACOS_VERSION"
-
-          if [[ "$(printf '%s\n' "26.2" "$MACOS_VERSION" | sort -V | head -n1)" == "26.2" ]]; then
-            xcodebuild test-without-building \
-              -project ${{ env.PROJECT }} \
-              -scheme Votra-CI \
-              -destination 'platform=macOS,arch=arm64' || {
-              echo "::error::Tests failed. Fix failing tests before releasing."
-              exit 1
-            }
-          else
-            echo "⚠️ Skipping tests: macOS $MACOS_VERSION < 26.2"
-            echo "Tests verified locally before release tag push"
-          fi
-
-      # 7. Setup code signing keychain
+      # 5. Setup code signing keychain
       - name: Setup Keychain
         env:
           DEVELOPER_CERTIFICATE_P12: ${{ secrets.DEVELOPER_CERTIFICATE_P12 }}
@@ -137,7 +102,7 @@ jobs:
 
           echo "✅ Keychain setup complete"
 
-      # 8. Build Release Archive
+      # 6. Build Release Archive
       - name: Build Archive
         run: |
           set -euo pipefail
@@ -153,7 +118,7 @@ jobs:
           }
           echo "✅ Archive created successfully"
 
-      # 9. Export App
+      # 7. Export App
       - name: Export App
         run: |
           set -euo pipefail
@@ -183,7 +148,7 @@ jobs:
           rm ExportOptions.plist
           echo "✅ App exported successfully"
 
-      # 10. Setup Notarization Credentials
+      # 8. Setup Notarization Credentials
       - name: Setup Notarization
         env:
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
@@ -197,7 +162,7 @@ jobs:
           }
           echo "✅ Notarization credentials configured"
 
-      # 11. Notarize App
+      # 9. Notarize App
       - name: Notarize App
         env:
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
@@ -228,7 +193,7 @@ jobs:
           rm Votra-notarize.zip
           echo "✅ App notarized and stapled successfully"
 
-      # 12. Create DMG
+      # 10. Create DMG
       - name: Create DMG
         env:
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
@@ -290,7 +255,7 @@ jobs:
 
           echo "✅ DMG created, signed, notarized, and stapled successfully"
 
-      # 13. Generate checksums
+      # 11. Generate checksums
       - name: Generate Checksums
         run: |
           set -euo pipefail
@@ -299,26 +264,49 @@ jobs:
           echo "Checksums:"
           cat checksums.txt
 
-      # 14. Cleanup keychain (runs even on failure)
-      - name: Cleanup
+      # 12. Cleanup keychain (runs even on failure)
+      - name: Cleanup Keychain
         if: always()
         run: |
           security delete-keychain build.keychain 2>/dev/null || true
           rm -rf ~/.appstoreconnect 2>/dev/null || true
           rm -f certificate.p12 2>/dev/null || true
-          echo "✅ Cleanup complete"
+          echo "✅ Keychain cleanup complete"
 
-      # 15. Create GitHub Release
-      - name: Create Release
+      # 13. Create GitHub Release (as draft first)
+      - name: Create Draft Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           name: Votra ${{ steps.version.outputs.version }}
-          draft: false
+          draft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           files: |
             build/${{ steps.version.outputs.dmg_name }}
             build/checksums.txt
+
+      # 14. Publish Release (only if all previous steps succeeded)
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "${{ github.ref_name }}" --draft=false
+          echo "✅ Release published successfully"
+
+      # 15. Cleanup on Failure - delete tag and draft release
+      - name: Cleanup on Failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "⚠️ Release failed, cleaning up..."
+          # Delete draft release if it exists
+          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+          # Delete the tag from remote
+          git push origin :refs/tags/${{ github.ref_name }} 2>/dev/null || true
+          echo "🗑️ Tag and draft release cleaned up"
+          echo "::error::Release failed. Tag has been deleted. Fix the issue and push a new tag."
 
 # Expected outputs:
 # - GitHub Release created with tag name

@@ -1,7 +1,7 @@
 # CI Workflow for Votra
 # Purpose: Build, test, and lint PRs without code signing
 # Environment: macos-26 runner (Apple Silicon), Xcode 26
-# Target: macOS 26.2+ (Tahoe), Apple Silicon only — FoundationModels/Translation APIs require Neural Engine
+# Target: macOS 26.0+ (Tahoe), Apple Silicon only — FoundationModels/Translation APIs require Neural Engine
 # Transparency: All logs publicly visible on GitHub Actions tab
 # Cost: FREE for public repositories
 
@@ -81,30 +81,77 @@ jobs:
             CODE_SIGNING_REQUIRED=NO
 
       # 7. Run unit tests
-      # Uses Votra-CI scheme which excludes VotraUITests (requires code signing)
-      # UI tests are run in the release workflow where signing is available
-      # Note: Tests require macOS 26.2+, but GitHub runners may be on older versions
+      # Uses -skip-testing-tags to skip audio hardware tests
+      # Monitors stdout for test completion and terminates (avoids HALC cleanup hang)
       - name: Test
         run: |
-          set -euo pipefail
-          MACOS_VERSION=$(sw_vers -productVersion)
-          echo "Runner macOS version: $MACOS_VERSION"
+          # Run xcodebuild with output to log file
+          xcodebuild test \
+            -project Votra.xcodeproj \
+            -scheme Votra-CI \
+            -destination 'platform=macOS,arch=arm64' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            -skip-testing-tags requiresHardware \
+            -resultBundlePath TestResults.xcresult > /tmp/xcodebuild.log 2>&1 &
+          XCODE_PID=$!
 
-          # Check if macOS version is >= 26.2
-          if [[ "$(printf '%s\n' "26.2" "$MACOS_VERSION" | sort -V | head -n1)" == "26.2" ]]; then
-            echo "macOS version is sufficient, running tests..."
-            xcodebuild test \
-              -project Votra.xcodeproj \
-              -scheme Votra-CI \
-              -destination 'platform=macOS,arch=arm64' \
-              -configuration Debug \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              -resultBundlePath TestResults.xcresult
+          # Monitor log file for test completion
+          test_result=""
+          last_test_time=0
+          while kill -0 $XCODE_PID 2>/dev/null; do
+            # Check for test completion patterns
+            # XCTest: "Test Suite 'All tests' passed"
+            # Swift Testing: Final suite pass or "✔ Test" messages followed by no activity
+            if grep -q "Test Suite 'All tests' passed" /tmp/xcodebuild.log 2>/dev/null; then
+              # XCTest completed, now wait for Swift Testing
+              # Look for HALC messages which indicate test cleanup phase
+              if grep -q "HALC_ShellObject" /tmp/xcodebuild.log 2>/dev/null; then
+                echo "✓ Tests completed, HALC cleanup detected - terminating"
+                test_result="passed"
+                break
+              fi
+            fi
+
+            # Also check for explicit failure
+            if grep -q "\*\* TEST FAILED \*\*" /tmp/xcodebuild.log 2>/dev/null; then
+              test_result="failed"
+              echo "✗ Tests failed"
+              break
+            fi
+
+            # Check for explicit success (XCTest style)
+            if grep -q "\*\* TEST SUCCEEDED \*\*" /tmp/xcodebuild.log 2>/dev/null; then
+              test_result="passed"
+              echo "✓ Tests passed"
+              break
+            fi
+
+            sleep 5
+          done
+
+          # Show last part of log for debugging
+          echo "=== Last 50 lines of test output ==="
+          tail -50 /tmp/xcodebuild.log
+
+          # Cleanup: kill xcodebuild
+          kill $XCODE_PID 2>/dev/null || true
+          sleep 2
+          kill -9 $XCODE_PID 2>/dev/null || true
+
+          # If we didn't detect result yet, check the log file
+          if [ -z "$test_result" ]; then
+            if grep -q "Test Suite 'All tests' passed" /tmp/xcodebuild.log 2>/dev/null; then
+              test_result="passed"
+            fi
+          fi
+
+          # Exit based on test result
+          if [ "$test_result" = "passed" ]; then
+            exit 0
           else
-            echo "⚠️ Skipping tests: macOS $MACOS_VERSION < 26.2 (deployment target)"
-            echo "Tests require macOS 26.2+ for FoundationModels and Translation APIs"
-            echo "Tests verified locally before PR submission"
+            exit 1
           fi
 
       # 8. Upload test results

@@ -8,7 +8,7 @@ Real-time voice translation for macOS, powered by Apple Intelligence.
 
 ## Requirements
 
-- **macOS 26.2** (Tahoe) or later
+- **macOS 26.0** (Tahoe) or later
 - **Apple Silicon** (M1 or later) — required for FoundationModels and Translation APIs
 - Microphone access for voice capture
 
@@ -34,7 +34,7 @@ The app is code-signed and notarized by Apple, so it will open without Gatekeepe
 ### Prerequisites
 
 - Xcode 26 or later
-- macOS 26.2 or later
+- macOS 26.0 or later
 - SwiftLint (`brew install swiftlint`)
 
 ### Build

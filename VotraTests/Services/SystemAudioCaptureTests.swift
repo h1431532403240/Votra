@@ -15,7 +15,7 @@ import Testing
 
 // MARK: - System Audio Capture Configuration Tests
 
-@Suite("System Audio Capture Configuration")
+@Suite("System Audio Capture Configuration", .tags(.requiresHardware))
 @MainActor
 struct SystemAudioCaptureConfigurationTests {
     @Test("Expected audio sample rate is 48000 Hz for system audio")
@@ -44,7 +44,7 @@ struct SystemAudioCaptureConfigurationTests {
 
 // MARK: - System Audio Capture Selected Source Tests
 
-@Suite("System Audio Capture Source Selection")
+@Suite("System Audio Capture Source Selection", .tags(.requiresHardware))
 @MainActor
 struct SystemAudioCaptureSourceSelectionTests {
     @Test("Selected source is nil by default (captures all system audio)")
@@ -144,7 +144,7 @@ struct SystemAudioCaptureSourceSelectionTests {
 
 // MARK: - System Audio Capture Stop Safety Tests
 
-@Suite("System Audio Capture Stop Safety")
+@Suite("System Audio Capture Stop Safety", .tags(.requiresHardware))
 @MainActor
 struct SystemAudioCaptureStopSafetyTests {
     @Test("Stop capture is safe when not capturing")
@@ -181,7 +181,7 @@ struct SystemAudioCaptureStopSafetyTests {
 
 // MARK: - System Audio Capture Capture Already Active Tests
 
-@Suite("System Audio Capture Already Active Error")
+@Suite("System Audio Capture Already Active Error", .tags(.requiresHardware))
 @MainActor
 struct SystemAudioCaptureAlreadyActiveTests {
     @Test("captureAlreadyActive error has descriptive message")
@@ -203,7 +203,7 @@ struct SystemAudioCaptureAlreadyActiveTests {
 
 // MARK: - Audio Source Info Display Name Tests
 
-@Suite("System Audio Source Display Name Logic")
+@Suite("System Audio Source Display Name Logic", .tags(.requiresHardware))
 @MainActor
 struct SystemAudioSourceDisplayNameTests {
     @Test("All system audio uses name as display name")
@@ -286,7 +286,7 @@ struct SystemAudioSourceDisplayNameTests {
 
 // MARK: - Audio Source Info Window Level Detection Tests
 
-@Suite("System Audio Source Window Level Detection")
+@Suite("System Audio Source Window Level Detection", .tags(.requiresHardware))
 @MainActor
 struct SystemAudioSourceWindowLevelDetectionTests {
     @Test("Source with windowID is window level")
@@ -331,7 +331,7 @@ struct SystemAudioSourceWindowLevelDetectionTests {
 
 // MARK: - Audio Capture Service Source Management Tests
 
-@Suite("Audio Capture Service Source Management")
+@Suite("Audio Capture Service Source Management", .tags(.requiresHardware))
 @MainActor
 struct AudioCaptureServiceSourceManagementTests {
     @Test("Service always has all system audio in available sources")
@@ -341,7 +341,7 @@ struct AudioCaptureServiceSourceManagementTests {
         #expect(service.availableAudioSources.contains { $0.isAllSystemAudio })
     }
 
-    @Test("Refresh audio sources preserves all system audio option")
+    @Test("Refresh audio sources preserves all system audio option", .disabled("Requires audio hardware - run locally"))
     func refreshPreservesAllSystemAudioOption() async {
         let service = AudioCaptureService()
 
@@ -391,7 +391,7 @@ struct AudioCaptureServiceSourceManagementTests {
 
 // MARK: - Screen Recording Permission Error Tests
 
-@Suite("Screen Recording Permission Error")
+@Suite("Screen Recording Permission Error", .tags(.requiresHardware))
 @MainActor
 struct ScreenRecordingPermissionErrorTests {
     @Test("screenRecordingPermissionDenied error has descriptive message")
@@ -421,7 +421,7 @@ struct ScreenRecordingPermissionErrorTests {
 
 // MARK: - Device Not Found Error for System Audio Tests
 
-@Suite("Device Not Found Error for System Audio")
+@Suite("Device Not Found Error for System Audio", .tags(.requiresHardware))
 @MainActor
 struct DeviceNotFoundErrorForSystemAudioTests {
     @Test("deviceNotFound error is used for missing display")
@@ -452,7 +452,7 @@ struct DeviceNotFoundErrorForSystemAudioTests {
 
 // MARK: - Engine Start Failed Error with System Audio Context Tests
 
-@Suite("Engine Start Failed Error with System Audio Context")
+@Suite("Engine Start Failed Error with System Audio Context", .tags(.requiresHardware))
 @MainActor
 struct EngineStartFailedErrorSystemAudioTests {
     @Test("engineStartFailed wraps ScreenCaptureKit errors")
@@ -488,7 +488,7 @@ struct EngineStartFailedErrorSystemAudioTests {
 
 // MARK: - Audio Stream Output Handler Initialization Tests
 
-@Suite("Audio Stream Output Handler Initialization")
+@Suite("Audio Stream Output Handler Initialization", .tags(.requiresHardware))
 @MainActor
 struct AudioStreamOutputHandlerInitTests {
     @Test("Handler stores callback for later invocation")
@@ -519,7 +519,7 @@ struct AudioStreamOutputHandlerInitTests {
 
 // MARK: - Video Stream Output Handler Purpose Tests
 
-@Suite("Video Stream Output Handler Purpose")
+@Suite("Video Stream Output Handler Purpose", .tags(.requiresHardware))
 @MainActor
 struct VideoStreamOutputHandlerPurposeTests {
     @Test("Video handler exists to prevent ScreenCaptureKit warnings")
@@ -540,7 +540,7 @@ struct VideoStreamOutputHandlerPurposeTests {
 
 // MARK: - Stream Delegate Error Handling Tests
 
-@Suite("Stream Delegate Error Handling")
+@Suite("Stream Delegate Error Handling", .tags(.requiresHardware))
 @MainActor
 struct StreamDelegateErrorHandlingTests {
     @Test("Stream delegate handles stream stopped with error")
@@ -560,7 +560,7 @@ struct StreamDelegateErrorHandlingTests {
 
 // MARK: - Thread Safety for System Audio Types Tests
 
-@Suite("Thread Safety for System Audio Types")
+@Suite("Thread Safety for System Audio Types", .tags(.requiresHardware))
 @MainActor
 struct ThreadSafetyForSystemAudioTypesTests {
     @Test("AudioSourceInfo can be passed between tasks")

@@ -130,6 +130,86 @@ protocol AudioCaptureServiceProtocol: Sendable {
     func selectAudioSource(_ source: AudioSourceInfo)
 }
 
+// MARK: - Factory
+
+/// Factory function to create the appropriate AudioCaptureService
+/// Uses StubAudioCaptureService on CI to avoid hardware access and process hangs
+@MainActor
+func createAudioCaptureService() -> any AudioCaptureServiceProtocol {
+    // Detect CI environment (GitHub Actions sets CI=true)
+    // This allows local tests to use real hardware, but CI uses stub
+    if ProcessInfo.processInfo.environment["CI"] == "true" {
+        return StubAudioCaptureService()
+    }
+    return AudioCaptureService()
+}
+
+// MARK: - Stub for CI/Testing
+
+/// Stub implementation that doesn't access audio hardware
+/// Used in CI environments and unit tests to prevent hangs
+@MainActor
+@Observable
+final class StubAudioCaptureService: AudioCaptureServiceProtocol {
+    private(set) var state: AudioCaptureState = .idle
+    private(set) var selectedMicrophone: AudioDevice?
+    private(set) var availableMicrophones: [AudioDevice] = []
+    private(set) var selectedAudioSource: AudioSourceInfo = .allSystemAudio
+    private(set) var availableAudioSources: [AudioSourceInfo] = [.allSystemAudio]
+
+    func startCapture(from source: AudioSource) async throws -> AsyncStream<AVAudioPCMBuffer> {
+        // Update state without accessing hardware
+        switch (state, source) {
+        case (.idle, .microphone):
+            state = .capturingMicrophone
+        case (.idle, .systemAudio):
+            state = .capturingSystemAudio
+        case (.capturingMicrophone, .systemAudio), (.capturingSystemAudio, .microphone):
+            state = .capturingBoth
+        default:
+            break
+        }
+        // Return an empty stream that never yields
+        return AsyncStream { $0.finish() }
+    }
+
+    func stopCapture(from source: AudioSource) async {
+        switch (state, source) {
+        case (.capturingMicrophone, .microphone), (.capturingSystemAudio, .systemAudio):
+            state = .idle
+        case (.capturingBoth, .microphone):
+            state = .capturingSystemAudio
+        case (.capturingBoth, .systemAudio):
+            state = .capturingMicrophone
+        default:
+            break
+        }
+    }
+
+    func stopAllCapture() async {
+        state = .idle
+    }
+
+    func selectMicrophone(_ device: AudioDevice) async throws {
+        selectedMicrophone = device
+    }
+
+    func requestPermissions() async -> AudioPermissionStatus {
+        // Return authorized in test environment
+        AudioPermissionStatus(microphone: .authorized, screenRecording: .authorized)
+    }
+
+    func refreshAudioSources() async {
+        // No-op in stub - don't access ScreenCaptureKit
+    }
+
+    func selectAudioSource(_ source: AudioSourceInfo) {
+        // Match real implementation: only select if source is available
+        guard availableAudioSources.contains(source) else { return }
+        selectedAudioSource = source
+    }
+}
+
 // MARK: - Implementation
 
 /// Main audio capture service combining microphone and system audio capture

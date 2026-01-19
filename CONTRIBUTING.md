@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Votra! This guide will help you g
 
 ### Prerequisites
 
-- **macOS 26.2** (Tahoe) or later
+- **macOS 26.0** (Tahoe) or later
 - **Xcode 26** or later
 - **Apple Silicon** Mac (M1 or later)
 - **SwiftLint**: `brew install swiftlint`

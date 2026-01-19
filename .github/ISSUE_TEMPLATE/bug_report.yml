@@ -62,8 +62,9 @@ body:
       label: macOS Version
       description: Which version of macOS are you running?
       options:
+        - macOS 26.0 (Tahoe)
+        - macOS 26.1 (Tahoe)
         - macOS 26.2 (Tahoe)
-        - macOS 26.3 (Tahoe)
         - Other (please specify in additional context)
     validations:
       required: true

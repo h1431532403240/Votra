@@ -2312,7 +2312,7 @@ struct TranslationViewModelAudioSourceSelectionTests {
         #expect(hasAllSystemAudio == true)
     }
 
-    @Test("Refresh audio sources is callable")
+    @Test("Refresh audio sources is callable", .disabled("Requires audio hardware - run locally"))
     func refreshAudioSourcesIsCallable() async {
         let viewModel = TranslationViewModel()
 
