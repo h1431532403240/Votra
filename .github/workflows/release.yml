@@ -104,6 +104,8 @@ jobs:
 
       # 6. Build Release Archive
       # Note: CODE_SIGN_STYLE=Manual overrides automatic signing in Xcode project
+      # Note: Release entitlements exclude iCloud/Push (require provisioning profiles)
+      #       Users who want CloudKit sync can build from source with their credentials
       - name: Build Archive
         run: |
           set -euo pipefail
@@ -114,6 +116,7 @@ jobs:
             -configuration Release \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Developer ID Application" \
+            CODE_SIGN_ENTITLEMENTS=Votra/Votra-Release.entitlements \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" || {
             echo "::error::Failed to create archive."
             exit 1
