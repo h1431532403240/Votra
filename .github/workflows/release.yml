@@ -265,25 +265,48 @@ jobs:
           cat checksums.txt
 
       # 12. Cleanup keychain (runs even on failure)
-      - name: Cleanup
+      - name: Cleanup Keychain
         if: always()
         run: |
           security delete-keychain build.keychain 2>/dev/null || true
           rm -rf ~/.appstoreconnect 2>/dev/null || true
           rm -f certificate.p12 2>/dev/null || true
-          echo "✅ Cleanup complete"
+          echo "✅ Keychain cleanup complete"
 
-      # 13. Create GitHub Release
-      - name: Create Release
+      # 13. Create GitHub Release (as draft first)
+      - name: Create Draft Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           name: Votra ${{ steps.version.outputs.version }}
-          draft: false
+          draft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           files: |
             build/${{ steps.version.outputs.dmg_name }}
             build/checksums.txt
+
+      # 14. Publish Release (only if all previous steps succeeded)
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "${{ github.ref_name }}" --draft=false
+          echo "✅ Release published successfully"
+
+      # 15. Cleanup on Failure - delete tag and draft release
+      - name: Cleanup on Failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "⚠️ Release failed, cleaning up..."
+          # Delete draft release if it exists
+          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+          # Delete the tag from remote
+          git push origin :refs/tags/${{ github.ref_name }} 2>/dev/null || true
+          echo "🗑️ Tag and draft release cleaned up"
+          echo "::error::Release failed. Tag has been deleted. Fix the issue and push a new tag."
 
 # Expected outputs:
 # - GitHub Release created with tag name
