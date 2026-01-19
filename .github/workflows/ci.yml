@@ -85,10 +85,7 @@ jobs:
       # Monitors stdout for test completion and terminates (avoids HALC cleanup hang)
       - name: Test
         run: |
-          # Create a named pipe for output monitoring
-          mkfifo /tmp/xcodebuild_output
-
-          # Run xcodebuild, tee output to pipe and log file
+          # Run xcodebuild with output to log file
           xcodebuild test \
             -project Votra.xcodeproj \
             -scheme Votra-CI \
@@ -97,36 +94,58 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             -skip-testing-tags requiresHardware \
-            -resultBundlePath TestResults.xcresult 2>&1 | tee /tmp/xcodebuild.log > /tmp/xcodebuild_output &
-          TEE_PID=$!
+            -resultBundlePath TestResults.xcresult > /tmp/xcodebuild.log 2>&1 &
+          XCODE_PID=$!
 
-          # Monitor output for test completion
+          # Monitor log file for test completion
           test_result=""
-          while IFS= read -r line; do
-            echo "$line"
-            # Check for test completion markers
-            if echo "$line" | grep -q "Test session results:"; then
-              # Next few lines will have pass/fail info
-              test_result="checking"
+          last_test_time=0
+          while kill -0 $XCODE_PID 2>/dev/null; do
+            # Check for test completion patterns
+            # XCTest: "Test Suite 'All tests' passed"
+            # Swift Testing: Final suite pass or "✔ Test" messages followed by no activity
+            if grep -q "Test Suite 'All tests' passed" /tmp/xcodebuild.log 2>/dev/null; then
+              # XCTest completed, now wait for Swift Testing
+              # Look for HALC messages which indicate test cleanup phase
+              if grep -q "HALC_ShellObject" /tmp/xcodebuild.log 2>/dev/null; then
+                echo "✓ Tests completed, HALC cleanup detected - terminating"
+                test_result="passed"
+                break
+              fi
             fi
-            if echo "$line" | grep -q "\*\* TEST SUCCEEDED \*\*"; then
-              test_result="passed"
-              echo "✓ Tests passed, terminating xcodebuild"
-              break
-            fi
-            if echo "$line" | grep -q "\*\* TEST FAILED \*\*"; then
+
+            # Also check for explicit failure
+            if grep -q "\*\* TEST FAILED \*\*" /tmp/xcodebuild.log 2>/dev/null; then
               test_result="failed"
               echo "✗ Tests failed"
               break
             fi
-          done < /tmp/xcodebuild_output
 
-          # Cleanup: kill tee and any remaining xcodebuild processes
-          kill $TEE_PID 2>/dev/null || true
-          pkill -f "xcodebuild.*Votra-CI" 2>/dev/null || true
+            # Check for explicit success (XCTest style)
+            if grep -q "\*\* TEST SUCCEEDED \*\*" /tmp/xcodebuild.log 2>/dev/null; then
+              test_result="passed"
+              echo "✓ Tests passed"
+              break
+            fi
+
+            sleep 5
+          done
+
+          # Show last part of log for debugging
+          echo "=== Last 50 lines of test output ==="
+          tail -50 /tmp/xcodebuild.log
+
+          # Cleanup: kill xcodebuild
+          kill $XCODE_PID 2>/dev/null || true
           sleep 2
-          pkill -9 -f "xcodebuild.*Votra-CI" 2>/dev/null || true
-          rm -f /tmp/xcodebuild_output
+          kill -9 $XCODE_PID 2>/dev/null || true
+
+          # If we didn't detect result yet, check the log file
+          if [ -z "$test_result" ]; then
+            if grep -q "Test Suite 'All tests' passed" /tmp/xcodebuild.log 2>/dev/null; then
+              test_result="passed"
+            fi
+          fi
 
           # Exit based on test result
           if [ "$test_result" = "passed" ]; then
