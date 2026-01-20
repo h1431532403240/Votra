@@ -334,6 +334,16 @@ final class TranslationViewModel {
         speechSynthesisService.speechRate = configuration.speechRate
     }
 
+    /// Restart recognition with updated settings (e.g., when accurate mode changes)
+    /// Only restarts if currently active
+    func restartIfActive() async {
+        guard state == .active else { return }
+
+        print("[Votra] Restarting recognition with updated settings...")
+        await stop()
+        try? await start()
+    }
+
     /// Start the translation pipeline using configured audio input mode
     /// Supports simultaneous microphone + system audio for real-time conversation translation
     func start() async throws {
@@ -529,11 +539,12 @@ final class TranslationViewModel {
 
     private func startPipeline(for source: AudioSource) async throws {
         // Determine locale and speech service for this source
-        // Microphone: user speaks source language → translate to target
-        // System Audio: remote speaks target language → translate to source
+        // Both microphone and system audio recognize source language by default
+        // This makes sense for the common use case of translating foreign content
+        // (e.g., watching an English video and getting Chinese subtitles)
         let (speechLocale, speechService) = source == .microphone
             ? (configuration.sourceLocale, microphoneSpeechService)
-            : (configuration.targetLocale, systemAudioSpeechService)
+            : (configuration.sourceLocale, systemAudioSpeechService)
 
         print("[Votra] Starting pipeline for \(source), locale: \(speechLocale.identifier)")
 
@@ -542,13 +553,8 @@ final class TranslationViewModel {
         print("[Votra] Audio capture started for \(source)")
 
         // Start speech recognition (returns transcription stream)
-        // Use accurate mode setting from preferences for better recognition accuracy
-        let accurateMode = UserPreferences.shared.accurateRecognitionMode
-        let transcriptionStream = try await speechService.startRecognition(
-            locale: speechLocale,
-            accurateMode: accurateMode
-        )
-        print("[Votra] Speech recognition started for \(source), accurateMode: \(accurateMode)")
+        let transcriptionStream = try await speechService.startRecognition(locale: speechLocale)
+        print("[Votra] Speech recognition started for \(source)")
 
         // Create the pipeline task that:
         // 1. Feeds audio buffers to speech recognition
@@ -594,22 +600,14 @@ final class TranslationViewModel {
     }
 
     private func processTranscriptionResult(_ result: TranscriptionResult, source: AudioSource) async {
-        let sourceLabel = source == .microphone ? "ME (microphone)" : "REMOTE (system audio)"
+        let sourceLabel = source == .microphone ? "ME (microphone)" : "VIDEO (system audio)"
         print("[Votra] [\(sourceLabel)] Processing transcription: '\(result.text)' (final: \(result.isFinal))")
 
-        // Determine source and target locales based on audio source
-        let sourceLocale: Locale
-        let targetLocale: Locale
-
-        if source == .microphone {
-            // User speaking: translate from source language to target
-            sourceLocale = configuration.sourceLocale
-            targetLocale = configuration.targetLocale
-        } else {
-            // Remote participant: translate from target language to source
-            sourceLocale = configuration.targetLocale
-            targetLocale = configuration.sourceLocale
-        }
+        // Both sources translate from source language to target language
+        // This makes sense for the common use case of translating foreign content
+        // (e.g., watching an English video and getting Chinese subtitles)
+        let sourceLocale = configuration.sourceLocale
+        let targetLocale = configuration.targetLocale
 
         // Update interim state for non-final results
         if !result.isFinal {

@@ -183,6 +183,51 @@ final class MediaImportViewModel {
         ]
     }
 
+    // MARK: - Type Properties - Language Defaults
+
+    /// Supported locales for translation
+    private static let supportedLocales = Set([
+        "en", "zh-Hans", "zh-Hant", "ja", "ko", "es", "fr", "de", "it", "pt"
+    ])
+
+    /// Returns the system locale if supported, otherwise returns a fallback
+    private static func systemTargetLocale() -> Locale {
+        // Get the user's preferred language
+        if let preferredLanguage = Locale.preferredLanguages.first {
+            let locale = Locale(identifier: preferredLanguage)
+            let languageCode = locale.language.languageCode?.identifier ?? ""
+
+            // Check for Chinese variants
+            if languageCode == "zh" {
+                let script = locale.language.script?.identifier
+                if script == "Hant" || preferredLanguage.contains("Hant") || preferredLanguage.contains("TW") || preferredLanguage.contains("HK") {
+                    return Locale(identifier: "zh-Hant")
+                } else {
+                    return Locale(identifier: "zh-Hans")
+                }
+            }
+
+            // Check if the language code is supported
+            if supportedLocales.contains(languageCode) {
+                return Locale(identifier: languageCode)
+            }
+        }
+
+        // Default fallback to English
+        return Locale(identifier: "en")
+    }
+
+    /// Returns a source locale different from the target
+    private static func defaultSourceLocale(targetLocale: Locale) -> Locale {
+        let targetId = targetLocale.identifier
+        // If target is English, default source to Simplified Chinese
+        if targetId == "en" {
+            return Locale(identifier: "zh-Hans")
+        }
+        // Otherwise, default source to English
+        return Locale(identifier: "en")
+    }
+
     // MARK: - Instance Properties
 
     /// Files in the processing queue
@@ -192,10 +237,10 @@ final class MediaImportViewModel {
     private(set) var batchState: BatchProcessingState = .idle
 
     /// Source language for transcription
-    var sourceLocale = Locale(identifier: "en")
+    var sourceLocale: Locale
 
     /// Target language for translation
-    var targetLocale = Locale(identifier: "zh-Hans")
+    var targetLocale: Locale
 
     /// Subtitle export options
     var exportOptions: SubtitleExportOptions = .default
@@ -282,6 +327,12 @@ final class MediaImportViewModel {
         subtitleExportService: any SubtitleExportServiceProtocol = SubtitleExportService(),
         intelligentSegmentationService: any IntelligentSegmentationServiceProtocol = IntelligentSegmentationService()
     ) {
+        // Set default locales based on system language
+        let target = Self.systemTargetLocale()
+        let source = Self.defaultSourceLocale(targetLocale: target)
+        self.targetLocale = target
+        self.sourceLocale = source
+
         self.speechRecognitionService = speechRecognitionService
         self.translationService = translationService
         self.subtitleExportService = subtitleExportService

@@ -15,6 +15,9 @@ struct MainTranslationView: View {
     @Environment(RecordingViewModel.self)
     private var recordingViewModel
 
+    @Environment(FloatingPanelController.self)
+    private var floatingPanelController
+
     @State private var isRecording = false
     @State private var showIdleIndicator = true
     @State private var showPermissionGuidance = false
@@ -51,8 +54,8 @@ struct MainTranslationView: View {
                 .padding()
         }
         .navigationTitle(String(localized: "Real-time Translation"))
-        .onChange(of: translationViewModel.messages) { _, newMessages in
-            if !newMessages.isEmpty && showIdleIndicator {
+        .onChange(of: translationViewModel.messages.count) { _, newCount in
+            if newCount > 0 && showIdleIndicator {
                 withAnimation {
                     showIdleIndicator = false
                 }
@@ -147,6 +150,13 @@ struct MainTranslationView: View {
             statusIndicator
 
             Spacer()
+
+            // Show floating panel button
+            Button(String(localized: "Overlay"), systemImage: "pip") {
+                floatingPanelController.togglePanel()
+            }
+            .buttonStyle(.bordered)
+            .help(String(localized: "Toggle translation overlay window (⌘⌥T)"))
 
             // Clear messages button
             if !translationViewModel.messages.isEmpty {
@@ -471,5 +481,6 @@ struct MainTranslationView: View {
     MainTranslationView()
         .environment(TranslationViewModel())
         .environment(RecordingViewModel())
+        .environment(FloatingPanelController())
         .frame(width: 700, height: 600)
 }

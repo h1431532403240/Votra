@@ -23,7 +23,6 @@ final class MockSpeechRecognitionServiceForMediaImport: SpeechRecognitionService
 
     private(set) var startRecognitionCallCount = 0
     private(set) var startRecognitionLocales: [Locale] = []
-    private(set) var startRecognitionAccurateModes: [Bool] = []
 
     private(set) var stopRecognitionCallCount = 0
 
@@ -52,10 +51,9 @@ final class MockSpeechRecognitionServiceForMediaImport: SpeechRecognitionService
 
     // MARK: - Protocol Methods
 
-    func startRecognition(locale: Locale, accurateMode: Bool) async throws -> AsyncStream<TranscriptionResult> {
+    func startRecognition(locale: Locale) async throws -> AsyncStream<TranscriptionResult> {
         startRecognitionCallCount += 1
         startRecognitionLocales.append(locale)
-        startRecognitionAccurateModes.append(accurateMode)
         sourceLocale = locale
 
         if let error = startRecognitionError {
@@ -105,7 +103,6 @@ final class MockSpeechRecognitionServiceForMediaImport: SpeechRecognitionService
         sourceLocale = .current
         startRecognitionCallCount = 0
         startRecognitionLocales = []
-        startRecognitionAccurateModes = []
         stopRecognitionCallCount = 0
         processAudioCallCount = 0
         processedBuffers = []

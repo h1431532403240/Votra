@@ -14,15 +14,15 @@ import SwiftUI
 final class FloatingPanelController {
     private var panel: NSPanel?
 
+    /// Closure to recreate the panel when needed (with fresh settings)
+    var onNeedRecreate: (() -> Void)?
+
     /// Whether the panel is currently visible
     private(set) var isVisible: Bool = false
 
-    /// The panel's opacity (0.3 - 1.0)
-    var opacity: Double = 1.0 {
-        didSet {
-            panel?.alphaValue = CGFloat(opacity)
-        }
-    }
+    /// The panel's background opacity (0.3 - 1.0)
+    /// Note: This only affects the background material, not text
+    var opacity: Double = 1.0
 
     /// The panel's frame
     var frame: NSRect {
@@ -43,13 +43,23 @@ final class FloatingPanelController {
         // Get the screen size to position the panel
         let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
 
-        // Default size and position (right side of screen)
-        let panelWidth: CGFloat = 400
-        let panelHeight: CGFloat = 600
-        let panelX = screenFrame.maxX - panelWidth - 20
-        let panelY = screenFrame.midY - panelHeight / 2
+        // Get size based on current display mode preference and user settings
+        let preferences = UserPreferences.shared
+        let displayMode = preferences.floatingPanelDisplayMode
+        let dynamicHeight: CGFloat
+        switch displayMode {
+        case .subtitle:
+            dynamicHeight = CGFloat(preferences.floatingPanelMinimumHeight)
+        case .conversation:
+            dynamicHeight = displayMode.recommendedSize.height
+        }
+        let panelSize = CGSize(width: displayMode.recommendedSize.width, height: dynamicHeight)
 
-        let contentRect = NSRect(x: panelX, y: panelY, width: panelWidth, height: panelHeight)
+        // Position at bottom center of screen
+        let panelX = screenFrame.midX - panelSize.width / 2
+        let panelY = screenFrame.minY + 60
+
+        let contentRect = NSRect(x: panelX, y: panelY, width: panelSize.width, height: panelSize.height)
 
         let panel = NSPanel(
             contentRect: contentRect,
@@ -68,13 +78,13 @@ final class FloatingPanelController {
         panel.titleVisibility = .hidden
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.alphaValue = CGFloat(opacity)
 
-        // Set minimum size
-        panel.minSize = NSSize(width: 300, height: 400)
+        // Set fixed minimum size to avoid constraint conflicts
+        panel.minSize = NSSize(width: 400, height: 80)
 
         // Create hosting view for SwiftUI content
         let hostingView = NSHostingView(rootView: content)
+        hostingView.sizingOptions = [.minSize, .maxSize]
         panel.contentView = hostingView
 
         // Show the panel
@@ -89,27 +99,30 @@ final class FloatingPanelController {
         panel.standardWindowButton(.closeButton)?.action = #selector(closePanel)
     }
 
-    /// Hide the floating panel
+    /// Close and destroy the floating panel (so it will be recreated with fresh settings)
     @objc
     func closePanel() {
-        panel?.orderOut(nil)
+        panel?.close()
+        panel = nil
         isVisible = false
     }
 
-    /// Destroy the panel completely
-    func destroyPanel() {
-        panel?.close()
-        panel = nil
+    /// Hide the floating panel without destroying it
+    func hidePanel() {
+        panel?.orderOut(nil)
         isVisible = false
     }
 
     /// Toggle panel visibility
     func togglePanel() {
         if isVisible {
-            closePanel()
+            hidePanel()
         } else if let panel = panel {
             panel.orderFrontRegardless()
             isVisible = true
+        } else {
+            // Panel was destroyed, recreate it
+            onNeedRecreate?()
         }
     }
 

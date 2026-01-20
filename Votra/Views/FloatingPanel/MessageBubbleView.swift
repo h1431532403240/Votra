@@ -58,7 +58,7 @@ struct MessageBubbleView: View {
                         Button {
                             onSpeak()
                         } label: {
-                            Label("Speak", systemImage: "speaker.wave.2")
+                            Label(String(localized: "Speak"), systemImage: "speaker.wave.2")
                                 .font(.caption)
                         }
                         .buttonStyle(GlassButtonStyle())

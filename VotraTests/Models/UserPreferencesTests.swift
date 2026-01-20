@@ -16,7 +16,6 @@ struct UserPreferencesTests {
         static let iCloudSyncEnabled = "iCloudSyncEnabled"
         static let defaultSourceLocale = "defaultSourceLocale"
         static let defaultTargetLocale = "defaultTargetLocale"
-        static let accurateRecognitionMode = "accurateRecognitionMode"
         static let speechRate = "speechRate"
         static let autoSpeak = "autoSpeak"
         static let usePersonalVoice = "usePersonalVoice"
@@ -33,7 +32,6 @@ struct UserPreferencesTests {
             Keys.iCloudSyncEnabled,
             Keys.defaultSourceLocale,
             Keys.defaultTargetLocale,
-            Keys.accurateRecognitionMode,
             Keys.speechRate,
             Keys.autoSpeak,
             Keys.usePersonalVoice,
@@ -129,25 +127,6 @@ struct UserPreferencesTests {
     }
 
     // MARK: - Speech Settings
-
-    @Test
-    func accurateRecognitionModeDefaultValue() {
-        clearUserDefaults()
-        let preferences = UserPreferences.shared
-        #expect(preferences.accurateRecognitionMode == false)
-    }
-
-    @Test
-    func accurateRecognitionModeSetAndGet() {
-        clearUserDefaults()
-        let preferences = UserPreferences.shared
-
-        preferences.accurateRecognitionMode = true
-        #expect(preferences.accurateRecognitionMode == true)
-
-        preferences.accurateRecognitionMode = false
-        #expect(preferences.accurateRecognitionMode == false)
-    }
 
     @Test
     func speechRateDefaultValue() {
