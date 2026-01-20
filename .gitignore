@@ -65,3 +65,6 @@ fastlane/test_output
 
 # Code injection
 iOSInjectionProject/
+
+# Local specs and planning docs
+specs/
