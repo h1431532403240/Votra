@@ -70,6 +70,15 @@ final class UserPreferences {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "floatingPanelDisplayMode") }
     }
 
+    /// Translation mode: subtitle (system audio only) or conversation (bidirectional)
+    var translationMode: TranslationMode {
+        get {
+            let raw = UserDefaults.standard.string(forKey: "translationMode") ?? "subtitle"
+            return TranslationMode(rawValue: raw) ?? .subtitle
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "translationMode") }
+    }
+
     /// Number of recent messages to show in floating panel subtitle mode (1-5)
     var floatingPanelMessageCount: Int {
         get {
@@ -103,7 +112,9 @@ final class UserPreferences {
     var floatingPanelMinimumHeight: Double {
         let baseHeight: Double = 36 // Minimal padding for subtitle style
         let showOriginal = floatingPanelShowOriginal
-        let linesPerMessage = showOriginal ? 2.0 : 1.0
+        // Each message shows up to 2 lines of translated text
+        // When original is also shown, that adds 1 more line (1 original + 2 translated = 3)
+        let linesPerMessage = showOriginal ? 3.0 : 2.0
         let totalLines = Double(floatingPanelMessageCount) * linesPerMessage
         return baseHeight + (floatingPanelLineHeight * totalLines)
     }

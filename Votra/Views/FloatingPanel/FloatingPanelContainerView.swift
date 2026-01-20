@@ -47,9 +47,10 @@ struct FloatingPanelContainerView: View {
         .onChange(of: viewModel.configuration.targetLocale) {
             updateTranslationConfiguration()
         }
-        .translationTask(translationConfiguration) { session in
-            // Set the session - this provides a backup session for when the main window's is invalidated
-            await viewModel.setTranslationSession(session)
+        .translationTask(translationConfiguration) { _ in
+            // Keep the translation task running to ensure session availability,
+            // but don't override the shared view model's session to avoid
+            // conflicting with the main window's translation session.
         }
     }
 

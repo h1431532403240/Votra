@@ -183,7 +183,7 @@ struct VotraApp: App {
         floatingPanelController.opacity = preferences.floatingWindowOpacity
 
         // Set up the recreate closure for when the panel is closed and needs to be reopened
-        floatingPanelController.onNeedRecreate = { [self] in
+        floatingPanelController.onNeedRecreate = {
             setupFloatingPanel()
         }
     }

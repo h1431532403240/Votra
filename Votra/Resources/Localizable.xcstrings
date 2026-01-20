@@ -1202,6 +1202,34 @@
         }
       }
     },
+    "Bidirectional translation for conversations. Your voice and system audio are both translated." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会話向けの双方向翻訳。あなたの声とシステム音声の両方が翻訳されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대화를 위한 양방향 번역. 음성과 시스템 오디오가 모두 번역됩니다."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话双向翻译。您的语音和系统音频都会被翻译。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "對話雙向翻譯。您的語音和系統音訊都會被翻譯。"
+          }
+        }
+      }
+    },
     "Bilingual" : {
       "localizations" : {
         "ja" : {
@@ -1990,6 +2018,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "對話"
+          }
+        }
+      }
+    },
+    "Conversation Mode" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会話モード"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대화 모드"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话模式"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "對話模式"
           }
         }
       }
@@ -9221,6 +9277,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "僅翻譯您的聲音"
+          }
+        }
+      }
+    },
+    "Translates system audio only. Ideal for watching foreign language content." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "システム音声のみを翻訳します。外国語コンテンツの視聴に最適です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 오디오만 번역합니다. 외국어 콘텐츠 시청에 적합합니다."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅翻译系统音频。适合观看外语内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅翻譯系統音訊。適合觀看外語內容。"
           }
         }
       }

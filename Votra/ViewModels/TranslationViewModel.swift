@@ -247,6 +247,9 @@ final class TranslationViewModel {
     /// Current configuration
     var configuration: TranslationConfiguration = .default
 
+    /// Current translation mode (subtitle or conversation)
+    var translationMode: TranslationMode = .subtitle
+
     /// Messages in the current conversation
     private(set) var messages: [ConversationMessage] = []
 
@@ -334,16 +337,6 @@ final class TranslationViewModel {
         speechSynthesisService.speechRate = configuration.speechRate
     }
 
-    /// Restart recognition with updated settings (e.g., when accurate mode changes)
-    /// Only restarts if currently active
-    func restartIfActive() async {
-        guard state == .active else { return }
-
-        print("[Votra] Restarting recognition with updated settings...")
-        await stop()
-        try? await start()
-    }
-
     /// Start the translation pipeline using configured audio input mode
     /// Supports simultaneous microphone + system audio for real-time conversation translation
     func start() async throws {
@@ -362,12 +355,14 @@ final class TranslationViewModel {
         state = .starting
         lastError = nil
 
-        // Get audio sources based on configured mode
-        let sources = configuration.audioInputMode.audioSources
+        // Get audio sources based on translation mode
+        let sources: Set<AudioSource> = translationMode.usesMicrophone
+            ? [.microphone, .systemAudio]
+            : [.systemAudio]
 
         do {
             // Start pipelines for each requested source
-            print("[Votra] Starting pipelines for mode: \(configuration.audioInputMode), sources: \(sources)")
+            print("[Votra] Starting pipelines for translation mode: \(translationMode), sources: \(sources)")
             for source in sources {
                 print("[Votra] === Starting pipeline for: \(source) ===")
                 try await startPipeline(for: source)
@@ -600,14 +595,37 @@ final class TranslationViewModel {
     }
 
     private func processTranscriptionResult(_ result: TranscriptionResult, source: AudioSource) async {
-        let sourceLabel = source == .microphone ? "ME (microphone)" : "VIDEO (system audio)"
+        let sourceLabel = source == .microphone ? "ME (microphone)" : "REMOTE (system audio)"
         print("[Votra] [\(sourceLabel)] Processing transcription: '\(result.text)' (final: \(result.isFinal))")
 
-        // Both sources translate from source language to target language
-        // This makes sense for the common use case of translating foreign content
-        // (e.g., watching an English video and getting Chinese subtitles)
-        let sourceLocale = configuration.sourceLocale
-        let targetLocale = configuration.targetLocale
+        // Determine translation direction based on translation mode and audio source:
+        //
+        // Subtitle Mode:
+        //   - Only system audio is used
+        //   - System audio: source language → target language
+        //   - Example: English video → Chinese subtitles
+        //
+        // Conversation Mode:
+        //   - Both microphone and system audio are used
+        //   - Microphone: user speaks source language → translate to target language
+        //   - System audio: remote speaks target language → translate to source language
+        //   - Example: Chinese user (source) ↔ English speaker (target)
+        let sourceLocale: Locale
+        let targetLocale: Locale
+        switch (translationMode, source) {
+        case (.subtitle, _):
+            // Subtitle mode: always source → target
+            sourceLocale = configuration.sourceLocale
+            targetLocale = configuration.targetLocale
+        case (.conversation, .microphone):
+            // Conversation: user speaks source → translate to target
+            sourceLocale = configuration.sourceLocale
+            targetLocale = configuration.targetLocale
+        case (.conversation, .systemAudio):
+            // Conversation: remote speaks target → translate to source
+            sourceLocale = configuration.targetLocale
+            targetLocale = configuration.sourceLocale
+        }
 
         // Update interim state for non-final results
         if !result.isFinal {

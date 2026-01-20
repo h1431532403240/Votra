@@ -18,6 +18,9 @@ struct MainTranslationView: View {
     @Environment(FloatingPanelController.self)
     private var floatingPanelController
 
+    @Environment(UserPreferences.self)
+    private var preferences
+
     @State private var isRecording = false
     @State private var showIdleIndicator = true
     @State private var showPermissionGuidance = false
@@ -95,6 +98,33 @@ struct MainTranslationView: View {
         @Bindable var viewModel = translationViewModel
 
         return HStack {
+            // Translation mode picker
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(localized: "Mode"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Picker(selection: Binding(
+                    get: { viewModel.translationMode },
+                    set: { newMode in
+                        viewModel.translationMode = newMode
+                        preferences.translationMode = newMode
+                    }
+                )) {
+                    ForEach(TranslationMode.allCases) { mode in
+                        Label(mode.localizedName, systemImage: mode.systemImage)
+                            .tag(mode)
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 260)
+                .help(viewModel.translationMode.localizedDescription)
+            }
+
+            Spacer()
+
             // Audio source picker
             VStack(alignment: .leading, spacing: 4) {
                 Text(String(localized: "Audio Source"))
@@ -169,6 +199,10 @@ struct MainTranslationView: View {
         }
         .task {
             await translationViewModel.refreshAudioSources()
+        }
+        .onAppear {
+            // Sync translation mode from UserPreferences
+            translationViewModel.translationMode = preferences.translationMode
         }
     }
 
@@ -263,6 +297,7 @@ struct MainTranslationView: View {
                 .padding()
             }
             .scrollIndicators(.hidden)
+            .defaultScrollAnchor(.bottom)
             .onScrollPhaseChange { _, newPhase in
                 // Detect when user is actively scrolling
                 if newPhase == .interacting || newPhase == .decelerating {
@@ -272,17 +307,13 @@ struct MainTranslationView: View {
             .onChange(of: translationViewModel.messages.count) { _, _ in
                 // Only scroll to bottom if auto-scroll is enabled
                 if isAutoScrollEnabled {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        proxy.scrollTo("bottom", anchor: .bottom)
-                    }
+                    proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
             .onChange(of: translationViewModel.interimTranscription) { _, _ in
-                // Also scroll for interim transcription updates
+                // Scroll for interim transcription updates (no animation to prevent jumping)
                 if isAutoScrollEnabled {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        proxy.scrollTo("bottom", anchor: .bottom)
-                    }
+                    proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
         }
@@ -482,5 +513,6 @@ struct MainTranslationView: View {
         .environment(TranslationViewModel())
         .environment(RecordingViewModel())
         .environment(FloatingPanelController())
+        .environment(UserPreferences.shared)
         .frame(width: 700, height: 600)
 }

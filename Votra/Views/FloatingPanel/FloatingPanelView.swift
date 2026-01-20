@@ -52,7 +52,7 @@ struct FloatingPanelView: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             ZStack(alignment: .topTrailing) {
                 // Main content
                 VStack(spacing: 0) {
@@ -141,7 +141,7 @@ struct FloatingPanelView: View {
             // Messages area (horizontal scrolling)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    ForEach(viewModel.messages.suffix(5)) { message in
+                    ForEach(viewModel.messages.suffix(messageCount)) { message in
                         CompactMessageBubble(message: message) {
                             Task { await onSpeak(message) }
                         }
@@ -177,17 +177,25 @@ struct FloatingPanelView: View {
     // MARK: - Status Indicator
 
     private var statusIndicator: some View {
-        Circle()
-            .fill(statusColor)
-            .frame(width: 10, height: 10)
-            .overlay {
-                if viewModel.state == .active {
-                    Circle()
-                        .stroke(statusColor.opacity(0.5), lineWidth: 2)
-                        .scaleEffect(1.5)
-                        .opacity(0.8)
+        HStack(spacing: 6) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 10, height: 10)
+                .overlay {
+                    if viewModel.state == .active {
+                        Circle()
+                            .stroke(statusColor.opacity(0.5), lineWidth: 2)
+                            .scaleEffect(1.5)
+                            .opacity(0.8)
+                    }
                 }
-            }
+
+            // Translation mode indicator
+            Image(systemName: viewModel.translationMode.systemImage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .help(viewModel.translationMode.localizedDescription)
+        }
     }
 
     private var statusColor: Color {
@@ -371,6 +379,20 @@ struct FloatingPanelView: View {
                     .font(.subheadline)
                     .bold()
             }
+
+            // Translation mode badge
+            HStack(spacing: 4) {
+                Image(systemName: viewModel.translationMode.systemImage)
+                    .font(.caption2)
+                Text(viewModel.translationMode.localizedName)
+                    .font(.caption2)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(.secondary.opacity(0.1))
+            .clipShape(.capsule)
+            .help(viewModel.translationMode.localizedDescription)
 
             Spacer()
 

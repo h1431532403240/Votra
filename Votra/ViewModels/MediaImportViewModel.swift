@@ -190,44 +190,6 @@ final class MediaImportViewModel {
         "en", "zh-Hans", "zh-Hant", "ja", "ko", "es", "fr", "de", "it", "pt"
     ])
 
-    /// Returns the system locale if supported, otherwise returns a fallback
-    private static func systemTargetLocale() -> Locale {
-        // Get the user's preferred language
-        if let preferredLanguage = Locale.preferredLanguages.first {
-            let locale = Locale(identifier: preferredLanguage)
-            let languageCode = locale.language.languageCode?.identifier ?? ""
-
-            // Check for Chinese variants
-            if languageCode == "zh" {
-                let script = locale.language.script?.identifier
-                if script == "Hant" || preferredLanguage.contains("Hant") || preferredLanguage.contains("TW") || preferredLanguage.contains("HK") {
-                    return Locale(identifier: "zh-Hant")
-                } else {
-                    return Locale(identifier: "zh-Hans")
-                }
-            }
-
-            // Check if the language code is supported
-            if supportedLocales.contains(languageCode) {
-                return Locale(identifier: languageCode)
-            }
-        }
-
-        // Default fallback to English
-        return Locale(identifier: "en")
-    }
-
-    /// Returns a source locale different from the target
-    private static func defaultSourceLocale(targetLocale: Locale) -> Locale {
-        let targetId = targetLocale.identifier
-        // If target is English, default source to Simplified Chinese
-        if targetId == "en" {
-            return Locale(identifier: "zh-Hans")
-        }
-        // Otherwise, default source to English
-        return Locale(identifier: "en")
-    }
-
     // MARK: - Instance Properties
 
     /// Files in the processing queue
@@ -337,6 +299,46 @@ final class MediaImportViewModel {
         self.translationService = translationService
         self.subtitleExportService = subtitleExportService
         self.intelligentSegmentationService = intelligentSegmentationService
+    }
+
+    // MARK: - Type Methods
+
+    /// Returns the system locale if supported, otherwise returns a fallback
+    private static func systemTargetLocale() -> Locale {
+        // Get the user's preferred language
+        if let preferredLanguage = Locale.preferredLanguages.first {
+            let locale = Locale(identifier: preferredLanguage)
+            let languageCode = locale.language.languageCode?.identifier ?? ""
+
+            // Check for Chinese variants
+            if languageCode == "zh" {
+                let script = locale.language.script?.identifier
+                if script == "Hant" || preferredLanguage.contains("Hant") || preferredLanguage.contains("TW") || preferredLanguage.contains("HK") {
+                    return Locale(identifier: "zh-Hant")
+                } else {
+                    return Locale(identifier: "zh-Hans")
+                }
+            }
+
+            // Check if the language code is supported
+            if supportedLocales.contains(languageCode) {
+                return Locale(identifier: languageCode)
+            }
+        }
+
+        // Default fallback to English
+        return Locale(identifier: "en")
+    }
+
+    /// Returns a source locale different from the target
+    private static func defaultSourceLocale(targetLocale: Locale) -> Locale {
+        let targetId = targetLocale.identifier
+        // If target is English, default source to Simplified Chinese
+        if targetId == "en" {
+            return Locale(identifier: "zh-Hans")
+        }
+        // Otherwise, default source to English
+        return Locale(identifier: "en")
     }
 
     // MARK: - Public Methods

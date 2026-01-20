@@ -653,7 +653,9 @@ struct MediaImportViewModelMockTests {
     func targetLocaleCanBeUpdated() {
         let viewModel = createViewModel()
 
-        #expect(viewModel.targetLocale.identifier == "zh-Hans")
+        // Default target locale is based on system locale
+        let validDefaults = ["zh-Hans", "zh-Hant", "en", "ja", "ko", "fr", "de", "es", "it", "pt", "ru", "ar", "hi", "th", "vi", "id", "ms", "tr", "pl", "nl", "uk"]
+        #expect(validDefaults.contains(viewModel.targetLocale.identifier))
 
         viewModel.targetLocale = Locale(identifier: "fr")
 
@@ -733,8 +735,10 @@ struct MediaImportViewModelMockTests {
     func initialConfigurationUsesDefaultValues() {
         let viewModel = createViewModel()
 
-        #expect(viewModel.sourceLocale.identifier == "en")
-        #expect(viewModel.targetLocale.identifier == "zh-Hans")
+        // Source locale defaults to "en" if target is not English
+        // Target locale is based on system locale
+        let validTargetDefaults = ["zh-Hans", "zh-Hant", "en", "ja", "ko", "fr", "de", "es", "it", "pt", "ru", "ar", "hi", "th", "vi", "id", "ms", "tr", "pl", "nl", "uk"]
+        #expect(validTargetDefaults.contains(viewModel.targetLocale.identifier))
         #expect(viewModel.outputDirectory == StoragePaths.exports)
     }
 

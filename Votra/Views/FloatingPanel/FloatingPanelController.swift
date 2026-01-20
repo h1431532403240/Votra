@@ -107,6 +107,11 @@ final class FloatingPanelController {
         isVisible = false
     }
 
+    /// Alias for closePanel() - destroys the panel completely
+    func destroyPanel() {
+        closePanel()
+    }
+
     /// Hide the floating panel without destroying it
     func hidePanel() {
         panel?.orderOut(nil)
