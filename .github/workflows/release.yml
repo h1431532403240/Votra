@@ -89,7 +89,8 @@ jobs:
           security list-keychains -d user -s build.keychain
 
           # Import certificate
-          echo -n "$DEVELOPER_CERTIFICATE_P12" | base64 --decode -o certificate.p12
+          echo -n "$DEVELOPER_CERTIFICATE_P12" | base64 --decode > certificate.p12
+          echo "Certificate file size: $(wc -c < certificate.p12) bytes"
           security import certificate.p12 -k build.keychain \
             -P "$DEVELOPER_CERTIFICATE_PASSWORD" \
             -T /usr/bin/codesign || {
