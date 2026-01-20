@@ -34,13 +34,6 @@ final class UserPreferences {
 
     // MARK: - Speech Settings
 
-    /// When true, uses more accurate but slower speech recognition
-    /// Uses `.transcription` preset instead of `.progressiveTranscription`
-    var accurateRecognitionMode: Bool {
-        get { UserDefaults.standard.bool(forKey: "accurateRecognitionMode") }
-        set { UserDefaults.standard.set(newValue, forKey: "accurateRecognitionMode") }
-    }
-
     var speechRate: Float {
         get {
             let value = UserDefaults.standard.float(forKey: "speechRate")
@@ -67,6 +60,63 @@ final class UserPreferences {
             return value > 0 ? min(max(value, 0.3), 1.0) : 0.9
         }
         set { UserDefaults.standard.set(newValue, forKey: "floatingWindowOpacity") }
+    }
+
+    var floatingPanelDisplayMode: FloatingPanelDisplayMode {
+        get {
+            let raw = UserDefaults.standard.string(forKey: "floatingPanelDisplayMode") ?? "subtitle"
+            return FloatingPanelDisplayMode(rawValue: raw) ?? .subtitle
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "floatingPanelDisplayMode") }
+    }
+
+    /// Translation mode: subtitle (system audio only) or conversation (bidirectional)
+    var translationMode: TranslationMode {
+        get {
+            let raw = UserDefaults.standard.string(forKey: "translationMode") ?? "subtitle"
+            return TranslationMode(rawValue: raw) ?? .subtitle
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "translationMode") }
+    }
+
+    /// Number of recent messages to show in floating panel subtitle mode (1-5)
+    var floatingPanelMessageCount: Int {
+        get {
+            let value = UserDefaults.standard.integer(forKey: "floatingPanelMessageCount")
+            return value > 0 ? min(max(value, 1), 5) : 2
+        }
+        set { UserDefaults.standard.set(min(max(newValue, 1), 5), forKey: "floatingPanelMessageCount") }
+    }
+
+    /// Whether to show original text in floating panel subtitle mode
+    var floatingPanelShowOriginal: Bool {
+        get { UserDefaults.standard.bool(forKey: "floatingPanelShowOriginal") }
+        set { UserDefaults.standard.set(newValue, forKey: "floatingPanelShowOriginal") }
+    }
+
+    /// Text size for floating panel (12-24 points, default 16)
+    var floatingPanelTextSize: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "floatingPanelTextSize")
+            return value > 0 ? min(max(value, 12), 24) : 16
+        }
+        set { UserDefaults.standard.set(min(max(newValue, 12), 24), forKey: "floatingPanelTextSize") }
+    }
+
+    /// Calculated line height based on text size (text size + spacing)
+    var floatingPanelLineHeight: Double {
+        floatingPanelTextSize + 6
+    }
+
+    /// Calculated minimum height for floating panel based on settings
+    var floatingPanelMinimumHeight: Double {
+        let baseHeight: Double = 36 // Minimal padding for subtitle style
+        let showOriginal = floatingPanelShowOriginal
+        // Each message shows up to 2 lines of translated text
+        // When original is also shown, that adds 1 more line (1 original + 2 translated = 3)
+        let linesPerMessage = showOriginal ? 3.0 : 2.0
+        let totalLines = Double(floatingPanelMessageCount) * linesPerMessage
+        return baseHeight + (floatingPanelLineHeight * totalLines)
     }
 
     var hasCompletedFirstRun: Bool {

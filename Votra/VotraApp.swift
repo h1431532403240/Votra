@@ -101,6 +101,7 @@ struct VotraApp: App {
             MainView()
                 .environment(translationViewModel)
                 .environment(recordingViewModel)
+                .environment(floatingPanelController)
                 .environment(UserPreferences.shared)
                 .onAppear {
                     StoragePaths.ensureDirectoriesExist()
@@ -115,9 +116,6 @@ struct VotraApp: App {
                 }
                 .onChange(of: translationViewModel.configuration) {
                     updateTranslationConfiguration()
-                }
-                .onChange(of: UserPreferences.shared.floatingWindowOpacity) { _, newOpacity in
-                    floatingPanelController.opacity = newOpacity
                 }
                 .translationTask(translationConfiguration) { session in
                     await translationViewModel.setTranslationSession(session)
@@ -158,16 +156,18 @@ struct VotraApp: App {
 
     private func setupFloatingPanel() {
         let preferences = UserPreferences.shared
-        let panelView = FloatingPanelView(
+        let controller = floatingPanelController
+        let panelView = FloatingPanelContainerView(
             viewModel: translationViewModel,
+            preferences: preferences,
             isRecording: $isRecording,
             opacity: Binding(
                 get: { preferences.floatingWindowOpacity },
-                set: { preferences.floatingWindowOpacity = $0 }
+                set: { newValue in
+                    preferences.floatingWindowOpacity = newValue
+                    controller.opacity = newValue
+                }
             ),
-            availableSourceLanguages: Locale.pickerLanguages,
-            availableTargetLanguages: Locale.pickerLanguages,
-            isOffline: false, // TODO: Check network status
             onStartStop: {
                 await toggleTranslation()
             },
@@ -181,6 +181,11 @@ struct VotraApp: App {
 
         floatingPanelController.showPanel(with: panelView)
         floatingPanelController.opacity = preferences.floatingWindowOpacity
+
+        // Set up the recreate closure for when the panel is closed and needs to be reopened
+        floatingPanelController.onNeedRecreate = {
+            setupFloatingPanel()
+        }
     }
 
     private func updateTranslationConfiguration() {

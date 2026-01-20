@@ -121,11 +121,9 @@ protocol SpeechRecognitionServiceProtocol: Sendable {
     var sourceLocale: Locale { get }
 
     /// Start speech recognition for the specified locale
-    /// - Parameters:
-    ///   - locale: The language to recognize
-    ///   - accurateMode: When true, uses more accurate but slower recognition
+    /// - Parameter locale: The language to recognize
     /// - Returns: An async stream of transcription results
-    func startRecognition(locale: Locale, accurateMode: Bool) async throws -> AsyncStream<TranscriptionResult>
+    func startRecognition(locale: Locale) async throws -> AsyncStream<TranscriptionResult>
 
     /// Stop speech recognition
     func stopRecognition() async
@@ -174,7 +172,7 @@ final class StubSpeechRecognitionService: SpeechRecognitionServiceProtocol {
         self.identifier = identifier
     }
 
-    func startRecognition(locale: Locale, accurateMode: Bool) async throws -> AsyncStream<TranscriptionResult> {
+    func startRecognition(locale: Locale) async throws -> AsyncStream<TranscriptionResult> {
         sourceLocale = locale
         state = .listening
         // Return an empty stream that finishes immediately
@@ -236,8 +234,8 @@ final class SpeechRecognitionService: SpeechRecognitionServiceProtocol {
 
     // MARK: - Public Methods
 
-    func startRecognition(locale: Locale, accurateMode: Bool = false) async throws -> AsyncStream<TranscriptionResult> {
-        print("[Votra] [\(identifier)] Starting speech recognition for locale: \(locale.identifier), accurateMode: \(accurateMode)")
+    func startRecognition(locale: Locale) async throws -> AsyncStream<TranscriptionResult> {
+        print("[Votra] [\(identifier)] Starting speech recognition for locale: \(locale.identifier)")
         guard state == .idle else {
             throw SpeechRecognitionError.alreadyRunning
         }
@@ -267,13 +265,10 @@ final class SpeechRecognitionService: SpeechRecognitionServiceProtocol {
             throw SpeechRecognitionError.languageNotSupported(locale)
         }
 
-        // Create transcriber with appropriate preset based on accuracy mode
-        // - .transcription: Basic, accurate transcription (better for accuracy)
-        // - .progressiveTranscription: Immediate transcription (better for real-time)
-        let preset: SpeechTranscriber.Preset = accurateMode ? .transcription : .progressiveTranscription
+        // Create transcriber with progressive preset for real-time translation
         let transcriber = SpeechTranscriber(
             locale: actualLocale,
-            preset: preset
+            preset: .progressiveTranscription
         )
         self.speechTranscriber = transcriber
 

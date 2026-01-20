@@ -114,11 +114,11 @@ struct OnboardingView: View {
                 .font(.system(size: 72))
                 .foregroundStyle(Color.accentColor)
 
-            Text("Welcome to Votra")
+            Text(String(localized: "Welcome to Votra"))
                 .font(.largeTitle)
                 .bold()
 
-            Text("Real-time voice translation for your conversations. Before we begin, we need to set up a few permissions.")
+            Text(String(localized: "Real-time voice translation for your conversations. Before we begin, we need to set up a few permissions."))
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -135,11 +135,11 @@ struct OnboardingView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(microphoneStatus == .authorized ? Color.green : Color.accentColor)
 
-            Text("Microphone Access Required")
+            Text(String(localized: "Microphone Access Required"))
                 .font(.title2)
                 .bold()
 
-            Text("Votra needs microphone access to capture your voice for translation.")
+            Text(String(localized: "Votra needs microphone access to capture your voice for translation."))
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -172,11 +172,11 @@ struct OnboardingView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(screenRecordingStatus == .authorized ? Color.green : Color.accentColor)
 
-            Text("Screen Recording Access Required")
+            Text(String(localized: "Screen Recording Access Required"))
                 .font(.title2)
                 .bold()
 
-            Text("Votra needs screen recording access to capture system audio from other applications like Zoom, FaceTime, or Safari.")
+            Text(String(localized: "Votra needs screen recording access to capture system audio from other applications like Zoom, FaceTime, or Safari."))
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -207,11 +207,11 @@ struct OnboardingView: View {
                 .font(.system(size: 72))
                 .foregroundStyle(.green)
 
-            Text("You're All Set!")
+            Text(String(localized: "You're All Set!"))
                 .font(.largeTitle)
                 .bold()
 
-            Text("Votra is ready to help you translate conversations in real-time. Enjoy!")
+            Text(String(localized: "Votra is ready to help you translate conversations in real-time. Enjoy!"))
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -283,17 +283,17 @@ struct OnboardingView: View {
             case .authorized:
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Text("Granted")
+                Text(String(localized: "Granted"))
                     .foregroundStyle(.green)
             case .denied:
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.red)
-                Text("Denied")
+                Text(String(localized: "Denied"))
                     .foregroundStyle(.red)
             case .notDetermined:
                 Image(systemName: "questionmark.circle")
                     .foregroundStyle(.secondary)
-                Text("Not Set")
+                Text(String(localized: "Not Set"))
                     .foregroundStyle(.secondary)
             }
         }

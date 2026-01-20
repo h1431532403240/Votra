@@ -462,9 +462,11 @@ struct FloatingPanelControllerPanelLifecycleTests {
         controller.showPanel(with: Text("Test"))
 
         let frame = controller.frame
-        // Default size is 400x600 - use tolerance for CI/screen variations
-        #expect(frame.width >= 300 && frame.width <= 500)
-        #expect(frame.height >= 400 && frame.height <= 700)
+        // Width should be in expected range
+        #expect(frame.width >= 300 && frame.width <= 700)
+        // Height is now dynamically calculated based on user settings
+        // Minimum expected height is around 80 (panel.minSize) to 700 for conversation mode
+        #expect(frame.height >= 80 && frame.height <= 700)
 
         // Cleanup
         controller.destroyPanel()
@@ -472,8 +474,8 @@ struct FloatingPanelControllerPanelLifecycleTests {
 
     // MARK: - Close Panel Tests
 
-    @Test("Close panel hides panel but preserves it")
-    func closePanelHidesPanelButPreservesIt() {
+    @Test("Close panel destroys panel for fresh settings on reopen")
+    func closePanelDestroysPanelForFreshSettings() {
         let controller = FloatingPanelController()
 
         controller.showPanel(with: Text("Test"))
@@ -482,13 +484,9 @@ struct FloatingPanelControllerPanelLifecycleTests {
         controller.closePanel()
         #expect(controller.isVisible == false)
 
-        // Panel should still exist (can be toggled back)
-        // Frame should still be valid (not zero)
-        let frame = controller.frame
-        #expect(frame.width > 0)
-
-        // Cleanup
-        controller.destroyPanel()
+        // Panel should be destroyed (frame is zero)
+        // This allows panel to be recreated with fresh settings when reopened
+        #expect(controller.frame == .zero)
     }
 
     // MARK: - Destroy Panel Tests
@@ -517,7 +515,8 @@ struct FloatingPanelControllerPanelLifecycleTests {
         controller.showPanel(with: Text("Test"))
         #expect(controller.isVisible == true)
 
-        controller.closePanel()
+        // Use hidePanel to hide without destroying
+        controller.hidePanel()
         #expect(controller.isVisible == false)
 
         controller.togglePanel()
@@ -717,21 +716,21 @@ struct FloatingPanelControllerPanelLifecycleTests {
         #expect(controller.isVisible == true)
         #expect(controller.frame != .zero)
 
-        // Hide panel
-        controller.closePanel()
+        // Hide panel (without destroying)
+        controller.hidePanel()
         #expect(controller.isVisible == false)
         #expect(controller.frame != .zero) // Panel still exists
 
-        // Show again
-        controller.showPanel(with: Text("Test Again"))
+        // Show again (toggle back)
+        controller.togglePanel()
         #expect(controller.isVisible == true)
 
-        // Destroy panel
-        controller.destroyPanel()
+        // Close panel (destroys it for fresh settings)
+        controller.closePanel()
         #expect(controller.isVisible == false)
-        #expect(controller.frame == .zero)
+        #expect(controller.frame == .zero) // Panel destroyed
 
-        // Can show again after destroy
+        // Can show again after close/destroy
         controller.showPanel(with: Text("New Panel"))
         #expect(controller.isVisible == true)
         #expect(controller.frame != .zero)

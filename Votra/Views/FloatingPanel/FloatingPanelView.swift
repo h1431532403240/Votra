@@ -2,7 +2,7 @@
 //  FloatingPanelView.swift
 //  Votra
 //
-//  Main floating panel view combining message bubbles and control bar with Liquid Glass styling.
+//  Floating panel view with subtitle and conversation modes.
 //
 
 import SwiftUI
@@ -10,6 +10,7 @@ import SwiftUI
 /// Main floating panel view for real-time translation overlay
 struct FloatingPanelView: View {
     @Bindable var viewModel: TranslationViewModel
+    var preferences: UserPreferences
     @Binding var isRecording: Bool
     @Binding var opacity: Double
 
@@ -21,49 +22,69 @@ struct FloatingPanelView: View {
     let onRecordToggle: () -> Void
     let onSpeak: (ConversationMessage) async -> Void
 
-    @State private var isMinimized = false
-    @State private var showIdleIndicator = true
-    @State private var showFirstRunOverlay = false
+    @State private var displayMode: FloatingPanelDisplayMode = UserPreferences.shared.floatingPanelDisplayMode
+    @State private var showControls = false
     @State private var showPermissionGuidance = false
 
+    /// Dynamic minimum height based on user settings (message count, text size, show original)
+    private var dynamicMinimumHeight: CGFloat {
+        switch displayMode {
+        case .subtitle:
+            return CGFloat(preferences.floatingPanelMinimumHeight)
+        case .conversation:
+            return displayMode.minimumSize.height
+        }
+    }
+
+    /// Text size from user preferences
+    private var textSize: CGFloat {
+        CGFloat(preferences.floatingPanelTextSize)
+    }
+
+    /// Message count from user preferences
+    private var messageCount: Int {
+        preferences.floatingPanelMessageCount
+    }
+
+    /// Whether to show original text
+    private var showOriginal: Bool {
+        preferences.floatingPanelShowOriginal
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            if isMinimized {
-                minimizedView
-            } else {
-                expandedView
-            }
-        }
-        .frame(minWidth: 300, maxWidth: .infinity, minHeight: isMinimized ? 50 : 400, maxHeight: .infinity)
-        .background(.ultraThinMaterial)
-        .clipShape(.rect(cornerRadius: 20))
-        .opacity(opacity)
-        .overlay {
-            // First-run overlay for new users (FR-046)
-            if showFirstRunOverlay {
-                FirstRunOverlayView(
-                    isPresented: $showFirstRunOverlay
-                ) {
-                    UserPreferences.shared.hasCompletedFirstRun = true
+        GeometryReader { _ in
+            ZStack(alignment: .topTrailing) {
+                // Main content
+                VStack(spacing: 0) {
+                    switch displayMode {
+                    case .subtitle:
+                        subtitleModeView
+                    case .conversation:
+                        conversationModeView
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.ultraThinMaterial.opacity(opacity))
+                .clipShape(.rect(cornerRadius: 16))
+
+                // Quick controls - only show in subtitle mode, fixed position
+                if displayMode == .subtitle {
+                    quickControls
+                        .padding(.top, 12)
+                        .padding(.trailing, 12)
                 }
             }
         }
-        .onAppear {
-            // Check if this is the first run
-            if !UserPreferences.shared.hasCompletedFirstRun {
-                showFirstRunOverlay = true
-            }
-        }
-        .onChange(of: viewModel.messages) { _, newMessages in
-            // Hide idle indicator when messages arrive
-            if !newMessages.isEmpty && showIdleIndicator {
-                withAnimation {
-                    showIdleIndicator = false
-                }
-            }
+        .frame(
+            minWidth: displayMode.minimumSize.width,
+            idealWidth: displayMode.recommendedSize.width,
+            minHeight: dynamicMinimumHeight,
+            idealHeight: dynamicMinimumHeight
+        )
+        .onChange(of: displayMode) { _, newMode in
+            UserPreferences.shared.floatingPanelDisplayMode = newMode
         }
         .onChange(of: viewModel.state) { _, newState in
-            // Show permission guidance when entering error state with permission issue
             if case .error = newState, viewModel.requiredPermissionType != nil {
                 showPermissionGuidance = true
             }
@@ -77,236 +98,427 @@ struct FloatingPanelView: View {
         }
     }
 
-    // MARK: - Expanded View
+    // MARK: - Subtitle Mode
 
-    @ViewBuilder private var expandedView: some View {
+    private var subtitleModeView: some View {
         VStack(spacing: 0) {
-            // Header with minimize button
-            headerView
+            // Main content area
+            HStack(spacing: 12) {
+                // Status indicator
+                statusIndicator
+
+                // Translation text
+                translationTextView
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .padding(.trailing, 80) // Reserve space for overlay controls
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Expandable control bar
+            if showControls {
+                Divider()
+                compactControlBar
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showControls)
+    }
+
+    // MARK: - Conversation Mode
+
+    private var conversationModeView: some View {
+        VStack(spacing: 0) {
+            // Header with controls
+            conversationHeader
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
 
             Divider()
 
-            // Messages area
-            messagesArea
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            Divider()
-
-            // Control bar
-            ControlBarView(
-                sourceLocale: Binding(
-                    get: { viewModel.configuration.sourceLocale },
-                    set: { viewModel.configuration.sourceLocale = $0 }
-                ),
-                targetLocale: Binding(
-                    get: { viewModel.configuration.targetLocale },
-                    set: { viewModel.configuration.targetLocale = $0 }
-                ),
-                autoSpeak: Binding(
-                    get: { viewModel.configuration.autoSpeak },
-                    set: { viewModel.configuration.autoSpeak = $0 }
-                ),
-                isRecording: $isRecording,
-                audioInputMode: Binding(
-                    get: { viewModel.configuration.audioInputMode },
-                    set: { viewModel.configuration.audioInputMode = $0 }
-                ),
-                accurateMode: Binding(
-                    get: { UserPreferences.shared.accurateRecognitionMode },
-                    set: { UserPreferences.shared.accurateRecognitionMode = $0 }
-                ),
-                availableSourceLanguages: availableSourceLanguages,
-                availableTargetLanguages: availableTargetLanguages,
-                isTranslating: viewModel.state == .active,
-                isOffline: isOffline,
-                onStartStop: {
-                    Task {
-                        await onStartStop()
+            // Messages area (horizontal scrolling)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(viewModel.messages.suffix(messageCount)) { message in
+                        CompactMessageBubble(message: message) {
+                            Task { await onSpeak(message) }
+                        }
                     }
-                },
-                onSwapLanguages: swapLanguages,
-                onRecordToggle: onRecordToggle
-            )
+
+                    // Interim message
+                    if let transcription = viewModel.interimTranscription {
+                        InterimBubble(
+                            transcription: transcription,
+                            translation: viewModel.interimTranslation
+                        )
+                    }
+
+                    // Empty state
+                    if viewModel.messages.isEmpty && viewModel.interimTranscription == nil {
+                        emptyStateView
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            }
+            .defaultScrollAnchor(.trailing)
+
+            Divider()
+
+            // Bottom control bar
+            conversationControlBar
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
         }
     }
 
-    // MARK: - Header View
+    // MARK: - Status Indicator
 
-    private var headerView: some View {
-        HStack {
-            // App icon and title
+    private var statusIndicator: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 10, height: 10)
+                .overlay {
+                    if viewModel.state == .active {
+                        Circle()
+                            .stroke(statusColor.opacity(0.5), lineWidth: 2)
+                            .scaleEffect(1.5)
+                            .opacity(0.8)
+                    }
+                }
+
+            // Translation mode indicator
+            Image(systemName: viewModel.translationMode.systemImage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .help(viewModel.translationMode.localizedDescription)
+        }
+    }
+
+    private var statusColor: Color {
+        switch viewModel.state {
+        case .active: return .green
+        case .starting: return .yellow
+        case .error: return .red
+        default: return .gray
+        }
+    }
+
+    // MARK: - Translation Text (Subtitle Mode)
+
+    private var translationTextView: some View {
+        // Reserve one slot for interim message if present
+        let hasInterim = viewModel.interimTranscription != nil
+        let finalizedCount = hasInterim ? max(messageCount - 1, 0) : messageCount
+        let recentMessages = viewModel.messages.suffix(finalizedCount)
+        let mainFont = Font.system(size: textSize, weight: .semibold)
+        let secondaryFont = Font.system(size: textSize - 2)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            if recentMessages.isEmpty && viewModel.interimTranscription == nil {
+                // Empty state
+                Text(viewModel.state == .active ? String(localized: "Listening...") : String(localized: "Ready"))
+                    .font(mainFont)
+                    .foregroundStyle(.secondary)
+            } else {
+                // Show recent finalized messages
+                ForEach(Array(recentMessages), id: \.id) { message in
+                    VStack(alignment: .leading, spacing: 2) {
+                        if showOriginal {
+                            Text(message.originalText)
+                                .font(secondaryFont)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.head)
+                        }
+                        Text(message.translatedText)
+                            .font(mainFont)
+                            .lineLimit(2)
+                            .truncationMode(.head)
+                            .foregroundStyle(message.id == viewModel.messages.last?.id ? .primary : .tertiary)
+                    }
+                }
+
+                // Show interim translation if available
+                if let translation = viewModel.interimTranslation {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if showOriginal, let transcription = viewModel.interimTranscription {
+                            Text(transcription)
+                                .font(secondaryFont)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.head)
+                        }
+                        Text(translation)
+                            .font(mainFont)
+                            .lineLimit(2)
+                            .truncationMode(.head)
+                            .foregroundStyle(.primary)
+                    }
+                } else if let transcription = viewModel.interimTranscription {
+                    // Show transcription while waiting for translation
+                    Text(transcription)
+                        .font(secondaryFont)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                }
+            }
+        }
+    }
+
+    // MARK: - Quick Controls (Subtitle Mode)
+
+    private var quickControls: some View {
+        HStack(spacing: 8) {
+            // Mode toggle
+            Button {
+                withAnimation {
+                    displayMode = .conversation
+                }
+            } label: {
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.body)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help(String(localized: "Switch to conversation mode"))
+
+            // Start/Stop
+            Button {
+                Task { await onStartStop() }
+            } label: {
+                Image(systemName: viewModel.state == .active ? "stop.fill" : "play.fill")
+                    .font(.body)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(viewModel.state == .active ? .red : .accentColor)
+
+            // More controls toggle
+            Button {
+                withAnimation {
+                    showControls.toggle()
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.body)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Compact Control Bar (Subtitle Mode)
+
+    private var compactControlBar: some View {
+        HStack(spacing: 16) {
+            // Language selection
             HStack(spacing: 8) {
-                Image(systemName: "waveform.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.tint)
-                Text("Votra")
-                    .font(.headline)
+                languagePicker(
+                    selection: Binding(
+                        get: { viewModel.configuration.sourceLocale },
+                        set: { viewModel.configuration.sourceLocale = $0 }
+                    ),
+                    languages: availableSourceLanguages
+                )
+
+                Button {
+                    swapLanguages()
+                } label: {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+
+                languagePicker(
+                    selection: Binding(
+                        get: { viewModel.configuration.targetLocale },
+                        set: { viewModel.configuration.targetLocale = $0 }
+                    ),
+                    languages: availableTargetLanguages
+                )
             }
 
             Spacer()
 
-            // Audio source picker
-            audioSourcePicker
+            // Auto-speak
+            Toggle(isOn: Binding(
+                get: { viewModel.configuration.autoSpeak },
+                set: { viewModel.configuration.autoSpeak = $0 }
+            )) {
+                Image(systemName: "speaker.wave.2")
+            }
+            .toggleStyle(.switch)
+            .controlSize(.mini)
 
-            // Clear button
+            // Opacity
+            HStack(spacing: 4) {
+                Image(systemName: "sun.min")
+                    .font(.caption2)
+                Slider(value: $opacity, in: 0.3...1.0)
+                    .frame(width: 60)
+            }
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: - Conversation Header
+
+    private var conversationHeader: some View {
+        HStack(spacing: 12) {
+            // App title
+            HStack(spacing: 6) {
+                Image(systemName: "waveform.circle.fill")
+                    .foregroundStyle(.tint)
+                Text("Votra")
+                    .font(.subheadline)
+                    .bold()
+            }
+
+            // Translation mode badge
+            HStack(spacing: 4) {
+                Image(systemName: viewModel.translationMode.systemImage)
+                    .font(.caption2)
+                Text(viewModel.translationMode.localizedName)
+                    .font(.caption2)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(.secondary.opacity(0.1))
+            .clipShape(.capsule)
+            .help(viewModel.translationMode.localizedDescription)
+
+            Spacer()
+
+            // Language display
+            HStack(spacing: 6) {
+                Text(viewModel.configuration.sourceLocale.localizedString(forIdentifier: viewModel.configuration.sourceLocale.identifier) ?? "")
+                    .font(.caption)
+                Image(systemName: "arrow.right")
+                    .font(.caption2)
+                Text(viewModel.configuration.targetLocale.localizedString(forIdentifier: viewModel.configuration.targetLocale.identifier) ?? "")
+                    .font(.caption)
+            }
+            .foregroundStyle(.secondary)
+
+            // Mode toggle
+            Button {
+                withAnimation {
+                    displayMode = .subtitle
+                }
+            } label: {
+                Image(systemName: "text.bubble")
+                    .font(.subheadline)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help(String(localized: "Switch to subtitle mode"))
+
+            // Clear
             if !viewModel.messages.isEmpty {
                 Button {
                     viewModel.clearMessages()
-                    withAnimation {
-                        showIdleIndicator = true
-                    }
                 } label: {
                     Image(systemName: "trash")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
                 }
                 .buttonStyle(.plain)
-                .help(String(localized: "Clear messages"))
+                .foregroundStyle(.secondary)
             }
+        }
+    }
 
-            // Opacity slider
-            HStack(spacing: 4) {
-                Image(systemName: "sun.min")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: $opacity, in: 0.3...1.0)
-                    .frame(width: 80)
-                Image(systemName: "sun.max")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    // MARK: - Conversation Control Bar
 
-            // Minimize button
+    private var conversationControlBar: some View {
+        HStack(spacing: 12) {
+            // Language pickers
+            languagePicker(
+                selection: Binding(
+                    get: { viewModel.configuration.sourceLocale },
+                    set: { viewModel.configuration.sourceLocale = $0 }
+                ),
+                languages: availableSourceLanguages
+            )
+
             Button {
-                withAnimation(.spring(duration: 0.3)) {
-                    isMinimized = true
-                }
+                swapLanguages()
             } label: {
-                Image(systemName: "chevron.up.circle")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.caption)
             }
             .buttonStyle(.plain)
-            .help(String(localized: "Minimize panel"))
-        }
-        .padding()
-    }
 
-    // MARK: - Messages Area
-
-    @ViewBuilder private var messagesArea: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                // Idle state indicator
-                if showIdleIndicator && viewModel.messages.isEmpty && viewModel.state == .active {
-                    IdleIndicatorView()
-                        .transition(.opacity)
-                }
-
-                // Messages grouped by speaker
-                ForEach(viewModel.messages.groupedBySpeaker(), id: \.0) { _, messages in
-                    MessageGroupView(
-                        messages: messages,
-                        speakerName: messages.first?.isFromUser == true ? String(localized: "Me") : String(localized: "Remote"),
-                        speakerColor: messages.first?.isFromUser == true ? .blue : .green
-                    ) { message in
-                        Task {
-                            await onSpeak(message)
-                        }
-                    }
-                }
-
-                // Interim message
-                if let transcription = viewModel.interimTranscription {
-                    InterimMessageView(
-                        transcription: transcription,
-                        translation: viewModel.interimTranslation,
-                        source: viewModel.interimSource
-                    )
-                }
-            }
-            .padding()
-        }
-        .defaultScrollAnchor(.bottom)
-        .scrollIndicators(.hidden)
-    }
-
-    // MARK: - Minimized View
-
-    private var minimizedView: some View {
-        HStack {
-            // Status
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(viewModel.state == .active ? .green : .gray)
-                    .frame(width: 8, height: 8)
-                Text(viewModel.state == .active ? String(localized: "Translating") : String(localized: "Paused"))
-                    .font(.caption)
-            }
+            languagePicker(
+                selection: Binding(
+                    get: { viewModel.configuration.targetLocale },
+                    set: { viewModel.configuration.targetLocale = $0 }
+                ),
+                languages: availableTargetLanguages
+            )
 
             Spacer()
 
-            // Expand button
-            Button {
-                withAnimation(.spring(duration: 0.3)) {
-                    isMinimized = false
-                }
-            } label: {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
+            // Auto-speak
+            Toggle(isOn: Binding(
+                get: { viewModel.configuration.autoSpeak },
+                set: { viewModel.configuration.autoSpeak = $0 }
+            )) {
+                Label(String(localized: "Auto-speak"), systemImage: "speaker.wave.2")
+                    .font(.caption)
             }
-            .buttonStyle(.plain)
-            .help(String(localized: "Expand"))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+
+            // Start/Stop button
+            Button {
+                Task { await onStartStop() }
+            } label: {
+                Label(
+                    viewModel.state == .active ? String(localized: "Stop") : String(localized: "Start"),
+                    systemImage: viewModel.state == .active ? "stop.fill" : "play.fill"
+                )
+                .font(.caption)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
         }
+    }
+
+    // MARK: - Empty State
+
+    private var emptyStateView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: viewModel.state == .active ? "waveform" : "play.circle")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            Text(viewModel.state == .active ? String(localized: "Listening...") : String(localized: "Press Start to begin"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(minWidth: 150)
         .padding()
     }
 
-    // MARK: - Audio Source Picker
-
-    private var audioSourcePicker: some View {
-        Menu {
-            ForEach(viewModel.availableAudioSources) { source in
-                Button {
-                    viewModel.selectAudioSource(source)
-                } label: {
-                    Label {
-                        Text(source.displayName)
-                    } icon: {
-                        AudioSourceIconView(source: source, size: 16)
-                    }
-                }
-            }
-
-            Divider()
-
-            Button {
-                Task {
-                    await viewModel.refreshAudioSources()
-                }
-            } label: {
-                Label(String(localized: "Refresh"), systemImage: "arrow.clockwise")
-            }
-        } label: {
-            HStack(spacing: 4) {
-                AudioSourceIconView(source: viewModel.selectedAudioSource, size: 16)
-                Text(viewModel.selectedAudioSource.displayName)
-                    .font(.caption)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.secondary.opacity(0.2))
-            .clipShape(.capsule)
-        }
-        .menuStyle(.button)
-        .menuIndicator(.visible)
-        .fixedSize()
-        .help(String(localized: "Audio Sources"))
-        .task {
-            await viewModel.refreshAudioSources()
-        }
-    }
-
     // MARK: - Helpers
+
+    private func languagePicker(selection: Binding<Locale>, languages: [Locale]) -> some View {
+        Picker("", selection: selection) {
+            ForEach(languages, id: \.identifier) { locale in
+                Text(locale.localizedString(forIdentifier: locale.identifier) ?? locale.identifier)
+                    .tag(locale)
+            }
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
 
     private func swapLanguages() {
         let temp = viewModel.configuration.sourceLocale
@@ -315,43 +527,63 @@ struct FloatingPanelView: View {
     }
 }
 
-// MARK: - Idle Indicator View
+// MARK: - Compact Message Bubble
 
-/// View shown when translation is active but no speech is detected
-struct IdleIndicatorView: View {
-    @State private var isAnimating = false
+struct CompactMessageBubble: View {
+    let message: ConversationMessage
+    let onSpeak: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            // Waveform animation
-            HStack(spacing: 4) {
-                ForEach(0..<5, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(.tint.opacity(0.6))
-                        .frame(width: 4, height: isAnimating ? CGFloat.random(in: 8...24) : 8)
-                        .animation(
-                            .easeInOut(duration: 0.5)
-                                .repeatForever()
-                                .delay(Double(index) * 0.1),
-                            value: isAnimating
-                        )
-                }
-            }
-            .frame(height: 24)
-
-            Text(String(localized: "Listening..."))
+        VStack(alignment: .leading, spacing: 4) {
+            Text(message.originalText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.head)
 
-            Text(String(localized: "Start speaking to translate"))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            Text(message.translatedText)
+                .font(.callout)
+                .lineLimit(3)
+                .truncationMode(.head)
         }
-        .padding()
-        .glassCard()
-        .onAppear {
-            isAnimating = true
+        .padding(10)
+        .frame(minWidth: 120, maxWidth: 250, alignment: .leading)
+        .background(message.isFromUser ? Color.blue.opacity(0.15) : Color.green.opacity(0.15))
+        .clipShape(.rect(cornerRadius: 12))
+        .onTapGesture {
+            onSpeak()
         }
+    }
+}
+
+// MARK: - Interim Bubble
+
+struct InterimBubble: View {
+    let transcription: String
+    let translation: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(transcription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.head)
+
+            if let translation = translation {
+                Text(translation)
+                    .font(.callout)
+                    .lineLimit(3)
+                    .truncationMode(.head)
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+        .padding(10)
+        .frame(minWidth: 120, maxWidth: 250, alignment: .leading)
+        .background(.yellow.opacity(0.15))
+        .clipShape(.rect(cornerRadius: 12))
     }
 }
 
@@ -388,23 +620,34 @@ struct AudioSourceIconView: View {
 
 // MARK: - Preview
 
-#Preview("Floating Panel") {
+#Preview("Subtitle Mode") {
     FloatingPanelView(
         viewModel: TranslationViewModel(),
+        preferences: UserPreferences.shared,
         isRecording: .constant(false),
         opacity: .constant(1.0),
-        availableSourceLanguages: [
-            Locale(identifier: "en"),
-            Locale(identifier: "zh-Hans")
-        ],
-        availableTargetLanguages: [
-            Locale(identifier: "en"),
-            Locale(identifier: "zh-Hans")
-        ],
+        availableSourceLanguages: Locale.pickerLanguages,
+        availableTargetLanguages: Locale.pickerLanguages,
         isOffline: false,
         onStartStop: {},
         onRecordToggle: {},
         onSpeak: { _ in }
     )
-    .frame(width: 400, height: 600)
+    .frame(width: 500, height: 120)
+}
+
+#Preview("Conversation Mode") {
+    FloatingPanelView(
+        viewModel: TranslationViewModel(),
+        preferences: UserPreferences.shared,
+        isRecording: .constant(false),
+        opacity: .constant(1.0),
+        availableSourceLanguages: Locale.pickerLanguages,
+        availableTargetLanguages: Locale.pickerLanguages,
+        isOffline: false,
+        onStartStop: {},
+        onRecordToggle: {},
+        onSpeak: { _ in }
+    )
+    .frame(width: 600, height: 220)
 }

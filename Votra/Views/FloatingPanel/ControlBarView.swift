@@ -14,7 +14,6 @@ struct ControlBarView: View {
     @Binding var autoSpeak: Bool
     @Binding var isRecording: Bool
     @Binding var audioInputMode: AudioInputMode
-    @Binding var accurateMode: Bool
 
     let availableSourceLanguages: [Locale]
     let availableTargetLanguages: [Locale]
@@ -82,15 +81,6 @@ struct ControlBarView: View {
                 }
                 .toggleStyle(.switch)
                 .controlSize(.small)
-
-                // Accurate mode toggle
-                Toggle(isOn: $accurateMode) {
-                    Label(String(localized: "Accurate"), systemImage: "checkmark.seal")
-                        .font(.caption)
-                }
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .help(String(localized: "Use more accurate but slower speech recognition"))
 
                 Spacer()
 
@@ -222,7 +212,6 @@ struct CompactControlBarView: View {
         autoSpeak: .constant(false),
         isRecording: .constant(false),
         audioInputMode: .constant(.systemAudioOnly),
-        accurateMode: .constant(false),
         availableSourceLanguages: [
             Locale(identifier: "en"),
             Locale(identifier: "zh-Hans"),

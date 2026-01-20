@@ -51,15 +51,19 @@ enum SettingsTab: Hashable {
 // MARK: - General Settings
 
 struct GeneralSettingsView: View {
+    @State private var opacity = UserPreferences.shared.floatingWindowOpacity
+    @State private var messageCount = UserPreferences.shared.floatingPanelMessageCount
+    @State private var showOriginal = UserPreferences.shared.floatingPanelShowOriginal
+    @State private var textSize = UserPreferences.shared.floatingPanelTextSize
+    @State private var autoSpeak = UserPreferences.shared.autoSpeak
+    @State private var speechRate = Double(UserPreferences.shared.speechRate)
+    @State private var usePersonalVoice = UserPreferences.shared.usePersonalVoice
+
     var body: some View {
         Form {
             Section(String(localized: "Appearance")) {
-                let opacity = Binding(
-                    get: { UserPreferences.shared.floatingWindowOpacity },
-                    set: { UserPreferences.shared.floatingWindowOpacity = $0 }
-                )
                 Slider(
-                    value: opacity,
+                    value: $opacity,
                     in: 0.3...1.0,
                     step: 0.1
                 ) {
@@ -69,23 +73,66 @@ struct GeneralSettingsView: View {
                 } maximumValueLabel: {
                     Text("100%")
                 }
+                .onChange(of: opacity) { _, newValue in
+                    UserPreferences.shared.floatingWindowOpacity = newValue
+                }
+            }
+
+            Section(String(localized: "Floating Panel")) {
+                Stepper(
+                    value: $messageCount,
+                    in: 1...5,
+                    step: 1
+                ) {
+                    HStack {
+                        Text(String(localized: "Display Lines"))
+                        Spacer()
+                        Text("\(messageCount)")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .help(String(localized: "Number of recent translation segments to display"))
+                .onChange(of: messageCount) { _, newValue in
+                    UserPreferences.shared.floatingPanelMessageCount = newValue
+                }
+
+                Toggle(String(localized: "Show Original Text"), isOn: $showOriginal)
+                    .help(String(localized: "Display the original text alongside the translation"))
+                    .onChange(of: showOriginal) { _, newValue in
+                        UserPreferences.shared.floatingPanelShowOriginal = newValue
+                    }
+
+                Slider(
+                    value: $textSize,
+                    in: 12...24,
+                    step: 1
+                ) {
+                    Text(String(localized: "Text Size"))
+                } minimumValueLabel: {
+                    Text("12")
+                } maximumValueLabel: {
+                    Text("24")
+                }
+                .help(String(localized: "Font size for floating panel text"))
+                .onChange(of: textSize) { _, newValue in
+                    UserPreferences.shared.floatingPanelTextSize = newValue
+                }
+
+                Text(String(localized: "Close and reopen the floating panel to apply changes."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section(String(localized: "Translation")) {
-                let autoSpeak = Binding(
-                    get: { UserPreferences.shared.autoSpeak },
-                    set: { UserPreferences.shared.autoSpeak = $0 }
-                )
-                Toggle(String(localized: "Auto-speak Translations"), isOn: autoSpeak)
+                Toggle(String(localized: "Auto-speak Translations"), isOn: $autoSpeak)
+                    .onChange(of: autoSpeak) { _, newValue in
+                        UserPreferences.shared.autoSpeak = newValue
+                    }
             }
 
             Section(String(localized: "Speech")) {
-                let speechRate = Binding(
-                    get: { Double(UserPreferences.shared.speechRate) },
-                    set: { UserPreferences.shared.speechRate = Float($0) }
-                )
                 Slider(
-                    value: speechRate,
+                    value: $speechRate,
                     in: 0.1...1.0,
                     step: 0.1
                 ) {
@@ -95,13 +142,15 @@ struct GeneralSettingsView: View {
                 } maximumValueLabel: {
                     Text(String(localized: "Fast"))
                 }
+                .onChange(of: speechRate) { _, newValue in
+                    UserPreferences.shared.speechRate = Float(newValue)
+                }
 
-                let usePersonalVoice = Binding(
-                    get: { UserPreferences.shared.usePersonalVoice },
-                    set: { UserPreferences.shared.usePersonalVoice = $0 }
-                )
-                Toggle(String(localized: "Use Personal Voice"), isOn: usePersonalVoice)
+                Toggle(String(localized: "Use Personal Voice"), isOn: $usePersonalVoice)
                     .help(String(localized: "Use your Personal Voice for speech synthesis when available"))
+                    .onChange(of: usePersonalVoice) { _, newValue in
+                        UserPreferences.shared.usePersonalVoice = newValue
+                    }
             }
 
         }

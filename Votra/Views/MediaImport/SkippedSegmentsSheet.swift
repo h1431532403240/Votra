@@ -57,10 +57,10 @@ struct SkippedSegmentsSheet: View {
                 .symbolRenderingMode(.multicolor)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Content Restrictions Detected")
+                Text(String(localized: "Content Restrictions Detected"))
                     .font(.headline)
 
-                Text("\(skippedTexts.count) segment(s) could not be processed by AI")
+                Text(String(localized: "\(skippedTexts.count) segment(s) could not be processed by AI"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -71,13 +71,13 @@ struct SkippedSegmentsSheet: View {
 
     private var footerView: some View {
         HStack {
-            Text("These segments were kept as-is without AI segmentation.")
+            Text(String(localized: "These segments were kept as-is without AI segmentation."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Spacer()
 
-            Button("OK") {
+            Button(String(localized: "OK")) {
                 dismiss()
             }
             .buttonStyle(.borderedProminent)

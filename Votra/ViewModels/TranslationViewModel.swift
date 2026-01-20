@@ -247,6 +247,9 @@ final class TranslationViewModel {
     /// Current configuration
     var configuration: TranslationConfiguration = .default
 
+    /// Current translation mode (subtitle or conversation)
+    var translationMode: TranslationMode = .subtitle
+
     /// Messages in the current conversation
     private(set) var messages: [ConversationMessage] = []
 
@@ -352,12 +355,14 @@ final class TranslationViewModel {
         state = .starting
         lastError = nil
 
-        // Get audio sources based on configured mode
-        let sources = configuration.audioInputMode.audioSources
+        // Get audio sources based on translation mode
+        let sources: Set<AudioSource> = translationMode.usesMicrophone
+            ? [.microphone, .systemAudio]
+            : [.systemAudio]
 
         do {
             // Start pipelines for each requested source
-            print("[Votra] Starting pipelines for mode: \(configuration.audioInputMode), sources: \(sources)")
+            print("[Votra] Starting pipelines for translation mode: \(translationMode), sources: \(sources)")
             for source in sources {
                 print("[Votra] === Starting pipeline for: \(source) ===")
                 try await startPipeline(for: source)
@@ -529,11 +534,12 @@ final class TranslationViewModel {
 
     private func startPipeline(for source: AudioSource) async throws {
         // Determine locale and speech service for this source
-        // Microphone: user speaks source language → translate to target
-        // System Audio: remote speaks target language → translate to source
+        // Both microphone and system audio recognize source language by default
+        // This makes sense for the common use case of translating foreign content
+        // (e.g., watching an English video and getting Chinese subtitles)
         let (speechLocale, speechService) = source == .microphone
             ? (configuration.sourceLocale, microphoneSpeechService)
-            : (configuration.targetLocale, systemAudioSpeechService)
+            : (configuration.sourceLocale, systemAudioSpeechService)
 
         print("[Votra] Starting pipeline for \(source), locale: \(speechLocale.identifier)")
 
@@ -542,13 +548,8 @@ final class TranslationViewModel {
         print("[Votra] Audio capture started for \(source)")
 
         // Start speech recognition (returns transcription stream)
-        // Use accurate mode setting from preferences for better recognition accuracy
-        let accurateMode = UserPreferences.shared.accurateRecognitionMode
-        let transcriptionStream = try await speechService.startRecognition(
-            locale: speechLocale,
-            accurateMode: accurateMode
-        )
-        print("[Votra] Speech recognition started for \(source), accurateMode: \(accurateMode)")
+        let transcriptionStream = try await speechService.startRecognition(locale: speechLocale)
+        print("[Votra] Speech recognition started for \(source)")
 
         // Create the pipeline task that:
         // 1. Feeds audio buffers to speech recognition
@@ -597,16 +598,31 @@ final class TranslationViewModel {
         let sourceLabel = source == .microphone ? "ME (microphone)" : "REMOTE (system audio)"
         print("[Votra] [\(sourceLabel)] Processing transcription: '\(result.text)' (final: \(result.isFinal))")
 
-        // Determine source and target locales based on audio source
+        // Determine translation direction based on translation mode and audio source:
+        //
+        // Subtitle Mode:
+        //   - Only system audio is used
+        //   - System audio: source language → target language
+        //   - Example: English video → Chinese subtitles
+        //
+        // Conversation Mode:
+        //   - Both microphone and system audio are used
+        //   - Microphone: user speaks source language → translate to target language
+        //   - System audio: remote speaks target language → translate to source language
+        //   - Example: Chinese user (source) ↔ English speaker (target)
         let sourceLocale: Locale
         let targetLocale: Locale
-
-        if source == .microphone {
-            // User speaking: translate from source language to target
+        switch (translationMode, source) {
+        case (.subtitle, _):
+            // Subtitle mode: always source → target
             sourceLocale = configuration.sourceLocale
             targetLocale = configuration.targetLocale
-        } else {
-            // Remote participant: translate from target language to source
+        case (.conversation, .microphone):
+            // Conversation: user speaks source → translate to target
+            sourceLocale = configuration.sourceLocale
+            targetLocale = configuration.targetLocale
+        case (.conversation, .systemAudio):
+            // Conversation: remote speaks target → translate to source
             sourceLocale = configuration.targetLocale
             targetLocale = configuration.sourceLocale
         }
